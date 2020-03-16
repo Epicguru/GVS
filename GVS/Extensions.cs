@@ -45,5 +45,14 @@ namespace GVS
             m.A = c.A;
             return m;
         }
+
+        public static Color AlphaShift(this Color c, float multiplier)
+        {
+            float a = c.A / 255f;
+            a *= multiplier;
+            byte byteA = (byte)(a * 255);
+            c.A = byteA;
+            return c;
+        }
     }
 }

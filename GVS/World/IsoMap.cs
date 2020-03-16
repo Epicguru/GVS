@@ -161,23 +161,14 @@ namespace GVS.World
 
         public void Draw(SpriteBatch spr)
         {
-            var cam = Main.Camera;
-            var bounds = cam.WorldViewBounds;
-            Vector2 topLeft = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2());
-            Vector2 bottomRight = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + bounds.Size.ToVector2());
-            Debug.Text($"Top left: {topLeft}");
-            Debug.Text($"Bottom right: {bottomRight}");
-
-            // The 'End Y' comes from the bottom left coordinate because screen right to left is positive Y.
-            int endY = Depth;
-            int endX = Width;
+            var bounds = GetDrawBounds();
 
             // Have to draw from bottom layer up, from top to bottom.
             for (int z = 0; z < Height; z++)
             {
-                for (int x = 0; x < endX; x++)
+                for (int x = bounds.sx; x <= bounds.ex; x++)
                 {
-                    for (int y = 0; y < endY; y++)
+                    for (int y = bounds.sy; y <= bounds.ey; y++)
                     {
                         Tile tile = tiles[x, y, z];
                         if (tile == null)
@@ -187,6 +178,80 @@ namespace GVS.World
                     }
                 }
             }
+        }
+
+        public (int sx, int sy, int ex, int ey) GetDrawBounds()
+        {
+            var cam = Main.Camera;
+            var bounds = cam.WorldViewBounds;
+            Vector2 topLeft = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2());
+            Vector2 topRight = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + new Vector2(bounds.Width, 0f));
+            Vector2 bottomLeft = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + bounds.Size.ToVector2() - new Vector2(bounds.Width, 0f));
+            Vector2 bottomRight = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + bounds.Size.ToVector2());
+
+            //Debug.Box(bounds, Color.Red.AlphaShift(0.05f));
+            //Point size = new Point(10, 10);
+            //Debug.Point(bounds.Location.ToVector2(), 10f, Color.DarkOliveGreen.AlphaShift(0.8f));
+            //Debug.Point(bounds.Location.ToVector2() + new Vector2(bounds.Width, 0f), 10f, Color.DarkOliveGreen.AlphaShift(0.8f));
+            //Debug.Point(bounds.Location.ToVector2() + bounds.Size.ToVector2() - new Vector2(bounds.Width, 0f), 10f, Color.DarkOliveGreen.AlphaShift(0.8f));
+            //Debug.Point(bounds.Location.ToVector2() + bounds.Size.ToVector2(), 10f, Color.DarkOliveGreen.AlphaShift(0.8f));
+
+
+            int startX = Min(topLeft.X, topRight.X, bottomLeft.X, bottomRight.X);
+            int startY = Min(topLeft.Y, topRight.Y, bottomLeft.Y, bottomRight.Y);
+
+            int endX = Max(topLeft.X, topRight.X, bottomLeft.X, bottomRight.X);
+            int endY = Max(topLeft.Y, topRight.Y, bottomLeft.Y, bottomRight.Y);
+
+            // Offset bounds downwards to make them not clip out the height.
+            endX += Height;
+            endY += Height;
+
+            Point3D start = ClampToWorld(new Point3D(startX, startY, 0));
+            Point3D end = ClampToWorld(new Point3D(endX, endY, 0));
+
+            return (start.X, start.Y, end.X, end.Y);
+        }
+
+        public Point3D ClampToWorld(Point3D tileCoordinates)
+        {
+            Point3D newPos = new Point3D();
+
+            newPos.X = MathHelper.Clamp(tileCoordinates.X, 0, Width - 1);
+            newPos.Y = MathHelper.Clamp(tileCoordinates.Y, 0, Depth - 1);
+            newPos.Z = MathHelper.Clamp(tileCoordinates.Z, 0, Height - 1);
+
+            return newPos;
+        }
+
+        private int Min(params float[] args)
+        {
+            if (args.Length == 0)
+                return -1;
+
+            int min = int.MaxValue;
+            foreach (var value in args)
+            {
+                if (value < min)
+                    min = (int)Math.Floor(value);
+            }
+
+            return min;
+        }
+
+        private int Max(params float[] args)
+        {
+            if (args.Length == 0)
+                return -1;
+
+            int max = int.MinValue;
+            foreach (var value in args)
+            {
+                if (value > max)
+                    max = (int)Math.Ceiling(value);
+            }
+
+            return max;
         }
 
         public void Dispose()

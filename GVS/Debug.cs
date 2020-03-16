@@ -202,6 +202,33 @@ namespace GVS
             }
         }
 
+        public static void Point(Vector2 position, float size, Color color)
+        {
+            if (Loop.InUIDraw)
+            {
+                toDrawUI.Add((DrawPoint, new object[] { position, size, color }));
+            }
+            else
+            {
+                toDraw.Add((DrawPoint, new object[] { position, size, color }));
+            }
+        }
+
+        private static void DrawPoint(SpriteBatch spr, object[] args)
+        {
+            Vector2 pos = (Vector2)args[0];
+            float size = (float) args[1];
+            Color color = (Color) args[2];
+
+            int centerX = (int)pos.X;
+            int centerY = (int)pos.Y;
+            int intSize = (int)size;
+
+            Rectangle bounds = new Rectangle(centerX - intSize / 2, centerY - intSize / 2, intSize, intSize);
+
+            spr.Draw(Pixel, bounds, color);
+        }
+
         private static void DrawRect(SpriteBatch spr, object[] args)
         {
             Rectangle bounds = (Rectangle)args[0];

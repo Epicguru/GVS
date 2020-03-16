@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -286,8 +285,11 @@ namespace GVS
 
             // Main world draw.
             Main.MainDraw();
-            Debug.Draw(spr);
 
+            spr.End();
+
+            spr.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp, null, null, null, Main.Camera.GetMatrix());
+            Debug.Draw(spr);
             spr.End();
 
             InUIDraw = true;

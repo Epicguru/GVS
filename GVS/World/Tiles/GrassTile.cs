@@ -4,11 +4,9 @@ namespace GVS.World.Tiles
 {
     public class GrassTile : Tile
     {
-        public override void Draw(SpriteBatch spr)
+        public GrassTile()
         {
             BaseSprite = Main.GrassTile;
-
-            base.Draw(spr);
         }
     }
 }

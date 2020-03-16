@@ -30,12 +30,28 @@ namespace GVS.World
                     Debug.Error($"Cannot set tile size of this atlas to {value}! Must be at least 1.");
             }
         }
+        public int Padding
+        {
+            get
+            {
+                return padding;
+            }
+            set
+            {
+                if (value < 0)
+                    Debug.Error($"Cannot set the value of padding to {value}! Must be at least 0.");
+                else
+                    padding = value;
+
+            }
+        }
         public int TilesInRow
         {
-            get { return MaxTextureWidth / ExpectedTileSize; }
+            get { return MaxTextureWidth / (ExpectedTileSize + Padding); }
         }
         public Texture2D Texture { get; private set; }
 
+        private int padding = 1;
         private int expectedTileSize = 256;
         private int maxTextureWidth = 2048;
         private Dictionary<string, Sprite> packedSprites = new Dictionary<string, Sprite>();
@@ -59,10 +75,13 @@ namespace GVS.World
             }
 
             int index = packedSprites.Count;
-            int x = index % TilesInRow * ExpectedTileSize;
-            int y = index / TilesInRow * ExpectedTileSize;
+            int ix = index % TilesInRow;
+            int iy = index / TilesInRow;
 
-            if(texture.Width != ExpectedTileSize || texture.Height != ExpectedTileSize)
+            int x = 2 * Padding * (ix + 1) - Padding + ix * ExpectedTileSize;
+            int y = 2 * Padding * (iy + 1) - Padding + iy * ExpectedTileSize;
+
+            if (texture.Width != ExpectedTileSize || texture.Height != ExpectedTileSize)
             {
                 Debug.Error($"Unexpected tile size in atlas: Size is {texture.Width}x{texture.Height}, expected {ExpectedTileSize}x{ExpectedTileSize}.");
                 return null;
@@ -82,10 +101,10 @@ namespace GVS.World
             int packedCount = packedSprites.Count;
             int width;
             if (packedCount >= TilesInRow)
-                width = ExpectedTileSize * TilesInRow;
+                width = ExpectedTileSize * TilesInRow + 2 * Padding * TilesInRow;
             else
-                width = packedCount * ExpectedTileSize;
-            int height = (packedCount / TilesInRow + 1) * ExpectedTileSize;
+                width = packedCount * ExpectedTileSize + 2 * Padding * packedCount;
+            int height = (packedCount / TilesInRow + 1) * ExpectedTileSize + 2 * Padding * (packedCount / TilesInRow + 1);
 
             Debug.Log($"Packing the tile atlas, {packedCount} tiles for {width}x{height} texture.");
 
@@ -98,10 +117,15 @@ namespace GVS.World
                 var toPack = texturesToPack[i];
                 Debug.Assert(!toPack.IsDisposed, "toPack.IsDisposed is true, expected false");
 
-                int x = i % TilesInRow;
-                int y = i / TilesInRow;
+                int ix = i % TilesInRow;
+                int iy = i / TilesInRow;
 
-                Rectangle region = new Rectangle(x * ExpectedTileSize, y * ExpectedTileSize, ExpectedTileSize, ExpectedTileSize);
+                int x = 2 * Padding * (ix + 1) - Padding + ix * ExpectedTileSize;
+                int y = 2 * Padding * (iy + 1) - Padding + iy * ExpectedTileSize;
+
+                // TODO actually write color to the padding area. The color should be an extension of the sides.
+
+                Rectangle region = new Rectangle(x, y, ExpectedTileSize, ExpectedTileSize);
                 toPack.GetData(colors);
                 tex.SetData(0, region, colors, 0, colors.Length);
 
