@@ -8,6 +8,8 @@ namespace GVS.World
     {
         public const bool DEBUG_MODE = true; // TODO remove-me for global mode, or use conditional compilation.
 
+        public static Color ShadowColor = Color.Black.AlphaShift(0.5f);
+
         /// <summary>
         /// The sprite that is rendered as the 'base': as the ground. If null, nothing is drawn apart from
         ///  the components.
@@ -32,6 +34,7 @@ namespace GVS.World
                 return components.Length;
             }
         }
+        public Vector2 DrawPosition { get; protected set; }
 
         private readonly TileComponent[] components = new TileComponent[8];
 
@@ -42,7 +45,7 @@ namespace GVS.World
 
         protected internal virtual void UponPlaced(IsoMap map)
         {
-
+            DrawPosition = map.GetTileDrawPosition(Position).ToVector2();
         }
 
         protected internal virtual void UponRemoved(IsoMap map)
@@ -65,30 +68,15 @@ namespace GVS.World
             // Draw sprite into world.
             if(BaseSprite != null)
             {
-                Point drawPos = Map.GetTileDrawPosition(Position);
                 Color c = BaseSpriteTint.Multiply(TemporarySpriteTint);
-                
-                spr.Draw(BaseSprite, drawPos.ToVector2(), c, GetDrawDepth());
-
+                spr.Draw(BaseSprite, DrawPosition, c, GetDrawDepth());
                 TemporarySpriteTint = Color.White;
 
                 // Draw tile shadows, where necessary.
-                if(Position.Z != 0)
+                if(Position.Z != 0 && Map.GetTile(Position.X, Position.Y, Position.Z + 1) == null)
                 {
-                    Tile toRight = Map.GetTile(Position.X - 1, Position.Y, Position.Z);
-                    Tile toLeft = Map.GetTile(Position.X, Position.Y - 1, Position.Z);
-
-                    const float MULTI = 1f / 20f;
-                    float depthNudge = Map.SingleTileDepth * 0.5f * MULTI; // This nudge places it above the tile and below the first component.
-
-                    if(toRight == null)
-                    {
-                        spr.Draw(Main.TileShadowTopRight, drawPos.ToVector2(), c, GetDrawDepth() + depthNudge);
-                    }
-                    if(toLeft == null)
-                    {
-                        spr.Draw(Main.TileShadowTopLeft, drawPos.ToVector2(), c, GetDrawDepth() + depthNudge);
-                    }
+                    var toDraw = GetShouldDrawShadows();
+                    DrawShadows(spr, toDraw.topRight, toDraw.topLeft, toDraw.bottomRight, toDraw.bottomLeft);
                 }
             }
 
@@ -97,6 +85,39 @@ namespace GVS.World
             {
                 // TODO catch or log exceptions.
                 comp?.Draw(spr);
+            }
+        }
+
+        protected virtual (bool topRight, bool topLeft, bool bottomRight, bool bottomLeft) GetShouldDrawShadows()
+        {
+            Tile toRight = Map.GetTile(Position.X - 1, Position.Y, Position.Z);
+            Tile toBLeft = Map.GetTile(Position.X + 1, Position.Y, Position.Z);
+            Tile toLeft = Map.GetTile(Position.X, Position.Y - 1, Position.Z);
+            Tile toBRight = Map.GetTile(Position.X, Position.Y + 1, Position.Z);
+
+            return (toRight == null, toLeft == null, toBRight == null, toBLeft == null);
+        }
+
+        protected virtual void DrawShadows(SpriteBatch spr, bool topRight, bool topLeft, bool bottomRight, bool bottomLeft)
+        {
+            const float MULTI = 1f / 20f;
+            float depthNudge = Map.SingleTileDepth * 0.5f * MULTI; // This nudge places it above the tile and below the first component.
+
+            if (topRight)
+            {
+                spr.Draw(Main.TileShadowTopRight, DrawPosition, ShadowColor, GetDrawDepth() + depthNudge);
+            }
+            if (topLeft)
+            {
+                spr.Draw(Main.TileShadowTopLeft, DrawPosition, ShadowColor, GetDrawDepth() + depthNudge);
+            }
+            if (bottomLeft)
+            {
+                spr.Draw(Main.TileShadowBottomLeft, DrawPosition, ShadowColor, GetDrawDepth() + depthNudge);
+            }
+            if (bottomRight)
+            {
+                spr.Draw(Main.TileShadowBottomRight, DrawPosition, ShadowColor, GetDrawDepth() + depthNudge);
             }
         }
 
@@ -180,9 +201,8 @@ namespace GVS.World
             {
                 current.Index = -1;
                 if (sendMessage)
-                    current?.UponRemoved(this);
+                    current.UponRemoved(this);
             }
-            
 
             // Clear from the array.
             components[index] = null;

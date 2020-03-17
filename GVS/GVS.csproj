@@ -69,6 +69,7 @@
     <Compile Include="World\Tile.cs" />
     <Compile Include="World\TileAtlas.cs" />
     <Compile Include="World\TileComponent.cs" />
+    <Compile Include="World\Tiles\Components\House.cs" />
     <Compile Include="World\Tiles\Components\Trees.cs" />
     <Compile Include="World\Tiles\Components\Mountain.cs" />
     <Compile Include="World\Tiles\SandTile.cs" />

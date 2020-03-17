@@ -255,19 +255,16 @@ namespace GVS
             }
 
             Debug.Update();
-            Input.StartFrame();            
+            Input.StartFrame();
 
-            Debug.Text($"FPS: {Framerate:F1} (Target: {(TargetFramerate == 0 ? "inf" : TargetFramerate.ToString("N0"))}, VSync: {VSyncMode})");
-            Debug.Text($"Time Scale: {Time.TimeScale}, DT: {Time.deltaTime}");
+            Debug.Text($"FPS: {Framerate:F0} (Target: {(TargetFramerate == 0 ? "uncapped" : TargetFramerate.ToString("F0"))}, VSync: {VSyncMode})");
+            Debug.Text($"Time Scale: {Time.TimeScale}");
             Debug.Text($"Screen Res: ({Screen.Width}x{Screen.Height})");
+            Debug.Text($"Used memory: {Main.GameProcess.VirtualMemorySize64 / 1024 / 1024}MB.");
             Debug.Text($"Texture Swap Count: {Loop.Statistics.DrawMetrics.TextureCount}");
             Debug.Text($"Draw Calls: {Loop.Statistics.DrawMetrics.DrawCount}");
             Debug.Text($"Sprites Drawn: {Loop.Statistics.DrawMetrics.SpriteCount}");
-            var pos = Main.Map.GetTileCoordinatesFromWorldPoint(Input.MouseWorldPos);
-            Debug.Text($"Tile under mouse (Z=0): ({pos.X:F0}, {pos.Y:F0})");
-            var tile = Main.Map.GetTile((int) pos.X, (int) pos.Y, 0);
-            if(tile != null)
-                tile.TemporarySpriteTint = Color.Red;
+            //Debug.Text($"Total Entities: {JEngine.Entities.EntityCount} of {JEngine.Entities.MaxEntityCount}.");
 
             // Update currently active screen.
             Main.MainUpdate();

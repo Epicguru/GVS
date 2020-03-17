@@ -130,7 +130,7 @@ namespace GVS.World
             return IsPointInRange(x, y, z) ? tiles[x, y, z] : null;
         }
 
-        public bool SetTile(int x, int y, int z, Tile tile, bool sendPlace = true, bool sendRemove = true)
+        public bool SetTile(int x, int y, int z, Tile tile)
         {
             // Check that the tile is not already placed.
             if(tile != null)
@@ -146,7 +146,7 @@ namespace GVS.World
             {
                 // Get the current tile at that position and send message if not null and enabled.
                 Tile current = tiles[x, y, z];
-                if(current != null && sendRemove)
+                if(current != null)
                 {
                     current.UponRemoved(this);
                     current.Map = null;
@@ -161,8 +161,7 @@ namespace GVS.World
                     tile.Map = this;
 
                     // Send message, if enabled.
-                    if (sendPlace)
-                        tile.UponPlaced(this);
+                    tile.UponPlaced(this);
                 }
 
                 return true;

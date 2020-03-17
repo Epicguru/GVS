@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
@@ -30,15 +31,24 @@ namespace GVS
 
         // TODO fix this, need a better way for each tile to load content before packing atlas.
         public static Sprite GrassTile, MountainTile, TreeTile, StoneTile, StoneTopTile;
-        public static Sprite WaterTile, SandTile;
-        public static Sprite TileShadowTopLeft, TileShadowTopRight;
+        public static Sprite WaterTile, SandTile, HouseTile;
+        public static Sprite TileShadowTopLeft, TileShadowTopRight, TileShadowBottomLeft, TileShadowBottomRight;
 
         public static IsoMap Map { get; private set; }
+        public static Process GameProcess
+        {
+            get
+            {
+                return main.thisProcess;
+            }
+        }
 
         public static string ContentDirectory { get; private set; }
         public static Rectangle ClientBounds { get; private set; }
 
         private static Main main;
+
+        private Process thisProcess;
 
         public Main()
         {
@@ -49,6 +59,8 @@ namespace GVS
             GameWindow = base.Window;
             Window.AllowUserResizing = true;
             IsMouseVisible = true;
+
+            thisProcess = Process.GetCurrentProcess();
         }
 
         protected override void Update(GameTime gameTime)
@@ -82,7 +94,7 @@ namespace GVS
             MissingTexture = Content.Load<Texture2D>("Textures/MissingTexture");
 
             // Create an instance of the isometric map.
-            Map = new IsoMap(50, 50, 2);
+            Map = new IsoMap(1000, 100, 2);
 
             // Temporarily load tiles here.
             GrassTile = Map.TileAtlas.Add("Textures/GrassTile");
@@ -94,6 +106,9 @@ namespace GVS
             SandTile = Map.TileAtlas.Add("Textures/SandTile");
             TileShadowTopRight = Map.TileAtlas.Add("Textures/TileShadowTopRight");
             TileShadowTopLeft = Map.TileAtlas.Add("Textures/TileShadowTopLeft");
+            TileShadowBottomRight = Map.TileAtlas.Add("Textures/TileShadowBottomRight");
+            TileShadowBottomLeft = Map.TileAtlas.Add("Textures/TileShadowBottomLeft");
+            HouseTile = Map.TileAtlas.Add("Textures/HouseTile");
 
             Map.TileAtlas.Pack();
 
@@ -115,7 +130,7 @@ namespace GVS
                 {
                     for (int z = 0; z < Map.Height; z++)
                     {
-                        const float SCALE = 0.04f;
+                        const float SCALE = 0.035f;
                         Vector2 offset = new Vector2(500, 300);
                         Color c = (x + y) % 2 == 0 ? Color.White : Color.Lerp(Color.Black, Color.White, 0.95f);
                         float perlin = n.GetPerlin(x * SCALE + offset.X, y * SCALE + offset.Y, z * SCALE);
@@ -128,8 +143,8 @@ namespace GVS
 
                         if (place)
                         {
-                            const float WATER_HEIGHT = 0.45f;
-                            const float SAND_HEIGHT = 0.52f;
+                            const float WATER_HEIGHT = 0.55f;
+                            const float SAND_HEIGHT = 0.62f;
 
                             Tile t;
                             if (z == 0 && perlin < WATER_HEIGHT)
@@ -171,13 +186,17 @@ namespace GVS
                         Tile above = Map.GetTile(x, y, z + 1);
                         if (above == null)
                         {
-                            if (r.NextDouble() < 0.15f)
+                            if (r.NextDouble() < 0.1f)
                             {
                                 t.AddComponent(new Mountain(), 0);
                             }
-                            else if (r.NextDouble() < 0.2f)
+                            else if (r.NextDouble() < 0.15f)
                             {
                                 t.AddComponent(new Trees(), 0);
+                            }
+                            else if(r.NextDouble() < 0.02f)
+                            {
+                                t.AddComponent(new House(), 0);
                             }
                         }
                     }
@@ -195,6 +214,8 @@ namespace GVS
             Loop.StopAndWait();
             Debug.Shutdown();
             Map.Dispose();
+            thisProcess.Dispose();
+            thisProcess = null;
             base.EndRun();
         }
 
