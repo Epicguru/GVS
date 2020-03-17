@@ -71,6 +71,8 @@
     <Compile Include="World\TileComponent.cs" />
     <Compile Include="World\Tiles\Components\Trees.cs" />
     <Compile Include="World\Tiles\Components\Mountain.cs" />
+    <Compile Include="World\Tiles\SandTile.cs" />
+    <Compile Include="World\Tiles\WaterTile.cs" />
     <Compile Include="World\Tiles\GrassTile.cs" />
     <Compile Include="World\Tiles\StoneTile.cs" />
   </ItemGroup>

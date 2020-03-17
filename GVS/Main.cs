@@ -30,6 +30,8 @@ namespace GVS
 
         // TODO fix this, need a better way for each tile to load content before packing atlas.
         public static Sprite GrassTile, MountainTile, TreeTile, StoneTile, StoneTopTile;
+        public static Sprite WaterTile, SandTile;
+        public static Sprite TileShadowTopLeft, TileShadowTopRight;
 
         public static IsoMap Map { get; private set; }
 
@@ -80,14 +82,18 @@ namespace GVS
             MissingTexture = Content.Load<Texture2D>("Textures/MissingTexture");
 
             // Create an instance of the isometric map.
-            Map = new IsoMap(30, 30, 3);
+            Map = new IsoMap(50, 50, 2);
 
             // Temporarily load tiles here.
-            GrassTile = Map.TileAtlas.Add("Textures/BaseCube");
+            GrassTile = Map.TileAtlas.Add("Textures/GrassTile");
             MountainTile = Map.TileAtlas.Add("Textures/Mountain");
             TreeTile = Map.TileAtlas.Add("Textures/Trees");
-            StoneTile = Map.TileAtlas.Add("Textures/StoneCube");
+            StoneTile = Map.TileAtlas.Add("Textures/StoneTile");
             StoneTopTile = Map.TileAtlas.Add("Textures/StoneTop");
+            WaterTile = Map.TileAtlas.Add("Textures/WaterTile");
+            SandTile = Map.TileAtlas.Add("Textures/SandTile");
+            TileShadowTopRight = Map.TileAtlas.Add("Textures/TileShadowTopRight");
+            TileShadowTopLeft = Map.TileAtlas.Add("Textures/TileShadowTopLeft");
 
             Map.TileAtlas.Pack();
 
@@ -109,32 +115,41 @@ namespace GVS
                 {
                     for (int z = 0; z < Map.Height; z++)
                     {
-                        const float SCALE = 0.1f;
-                        Color c = (x + y) % 2 == 0 ? Color.White : Color.Gray.LightShift(1.8f);
-                        float perlin = n.GetPerlin(x * SCALE, y * SCALE, z * SCALE);
+                        const float SCALE = 0.04f;
+                        Vector2 offset = new Vector2(500, 300);
+                        Color c = (x + y) % 2 == 0 ? Color.White : Color.Lerp(Color.Black, Color.White, 0.95f);
+                        float perlin = n.GetPerlin(x * SCALE + offset.X, y * SCALE + offset.Y, z * SCALE);
                         bool place = z == 0 || perlin >= 0.7f;
 
                         // Prevent floating tiles.
-                        if (z != 0 && Map.GetTile(x, y, z - 1) == null)
+                        var below = Map.GetTile(x, y, z - 1);
+                        if (z != 0 && (below == null || below is WaterTile))
                             place = false;
 
                         if (place)
                         {
+                            const float WATER_HEIGHT = 0.45f;
+                            const float SAND_HEIGHT = 0.52f;
+
                             Tile t;
-                            if (z == 0)
-                            {
-                                t = new GrassTile();
-                            }
+                            if (z == 0 && perlin < WATER_HEIGHT)
+                                t = new WaterTile();
+                            else if (perlin < SAND_HEIGHT)
+                                t = new SandTile();
                             else
-                            {
-                                if (perlin > 0.7f)
-                                    t = new StoneTile();
-                                else
-                                    t = new GrassTile();
-                            }
+                                t = new GrassTile();
+                            
                             Map.SetTile(x, y, z, t);
 
-                            t.BaseSpriteTint = c.LightShift(0.7f + 0.3f * ((z + 1f) / Map.Height));
+                            //if (t is WaterTile)
+                            //    c = Color.White;
+
+                            t.BaseSpriteTint = c.LightShift(0.85f + 0.15f * ((z + 1f) / Map.Height));
+                            if(t is WaterTile)
+                            {
+                                t.BaseSpriteTint = t.BaseSpriteTint.Multiply(Color.DeepSkyBlue);
+                                t.BaseSpriteTint = t.BaseSpriteTint.LightShift(0.45f + (perlin / WATER_HEIGHT) * 0.8f);
+                            }
                         }
                     }
                 }
@@ -148,8 +163,13 @@ namespace GVS
                     for (int z = 0; z < Map.Height; z++)
                     {
                         Tile t = Map.GetTile(x, y, z);
+                        if (t == null)
+                            continue;
+                        if (t is WaterTile || t is SandTile)
+                            continue;
+
                         Tile above = Map.GetTile(x, y, z + 1);
-                        if (t != null && above == null)
+                        if (above == null)
                         {
                             if (r.NextDouble() < 0.15f)
                             {

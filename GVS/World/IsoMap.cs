@@ -68,10 +68,25 @@ namespace GVS.World
         {
             const float MAX = 0.9f;
 
+            // TODO clamp or warn when out of bounds.
+            // TODO move calculations such as maxIndex out of here.
+
+            // This is the amount of tiles in a height level.
             float heightStep = Width * Depth;
+
+            // Generate an index for the coordinates.
+            // Index increases by 1 for every Width unit, then for every Depth unit, and finally for every Height unit.
+            // This means that every Width row will be drawn, then every Depth row will be stacked, then each Height layer will be stacked.
             float index = mapCoords.X + mapCoords.Y * Width + mapCoords.Z * heightStep;
-            int maxIndex = Width * Depth * Height - 1;
-            return (index / maxIndex) * MAX;
+
+            // Calculate a max index for depth. The max index is the index of the tile that exists at the bottom center edge of the map,
+            // 1 height layer above the max height for this map.
+            // The reason for the extra height level is so that components can be drawn on top of the top height layer tiles.
+            int maxIndex = Width * Depth * (Height + 1) - 1; // Have to add 1 on to the height so that the top tiles can draw components without clipping out.
+
+            // Return the final depth value. The maximum intended depth value is MAX (0.9) to allow for
+            // Entities to be drawn on top of the map.
+            return MathHelper.Clamp((index / maxIndex) * MAX, 0f, MAX);
         }
 
         public Vector2 GetTileCoordinatesFromWorldPoint(Vector2 flatWorldPos)
@@ -257,6 +272,11 @@ namespace GVS.World
         public void Dispose()
         {
             TileAtlas.Dispose();
+        }
+
+        public override string ToString()
+        {
+            return $"IsoMap [{Width}x{Depth}x{Height}]";
         }
     }
 }

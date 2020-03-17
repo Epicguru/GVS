@@ -71,6 +71,25 @@ namespace GVS.World
                 spr.Draw(BaseSprite, drawPos.ToVector2(), c, GetDrawDepth());
 
                 TemporarySpriteTint = Color.White;
+
+                // Draw tile shadows, where necessary.
+                if(Position.Z != 0)
+                {
+                    Tile toRight = Map.GetTile(Position.X - 1, Position.Y, Position.Z);
+                    Tile toLeft = Map.GetTile(Position.X, Position.Y - 1, Position.Z);
+
+                    const float MULTI = 1f / 20f;
+                    float depthNudge = Map.SingleTileDepth * 0.5f * MULTI; // This nudge places it above the tile and below the first component.
+
+                    if(toRight == null)
+                    {
+                        spr.Draw(Main.TileShadowTopRight, drawPos.ToVector2(), c, GetDrawDepth() + depthNudge);
+                    }
+                    if(toLeft == null)
+                    {
+                        spr.Draw(Main.TileShadowTopLeft, drawPos.ToVector2(), c, GetDrawDepth() + depthNudge);
+                    }
+                }
             }
 
             // Draw all components.

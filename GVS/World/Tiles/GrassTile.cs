@@ -1,6 +1,4 @@
-﻿using Microsoft.Xna.Framework.Graphics;
-
-namespace GVS.World.Tiles
+﻿namespace GVS.World.Tiles
 {
     public class GrassTile : Tile
     {

@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework.Graphics;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace GVS.World
 {
@@ -23,7 +24,14 @@ namespace GVS.World
 
         public virtual float GetDrawDepth()
         {
-            return Map.GetTileDrawDepth(Position + new Point3D(0, 0, 1)) + Map.SingleTileDepth * ((float)Index / Tile.MaxComponentCount);
+            // Get the draw depth of the tile above. This is where the base (index = 0) component would draw.
+            float aboveDepth = Map.GetTileDrawDepth(Position + new Point3D(0, 0, 1));
+
+            // Get a 'nudge' based on our index. Higher indexes draw at higher levels.
+            // The nudge value is limited to half of a tile depth, allowing for entities to draw on top of components.
+            float indexNudge = Map.SingleTileDepth * 0.5f * ((float) (Index + 1) / (Tile.MaxComponentCount + 1));
+
+            return MathHelper.Clamp(aboveDepth + indexNudge, 0f, 1f);
         }
 
         protected internal virtual void UponAdded(Tile addedTo)

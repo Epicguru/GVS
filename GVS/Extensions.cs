@@ -50,7 +50,7 @@ namespace GVS
         {
             float a = c.A / 255f;
             a *= multiplier;
-            byte byteA = (byte)(a * 255);
+            byte byteA = (byte)MathHelper.Clamp((a * 255), 0, 255);
             c.A = byteA;
             return c;
         }
