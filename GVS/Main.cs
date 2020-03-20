@@ -27,13 +27,14 @@ namespace GVS
         public static SpriteBatch SpriteBatch;
         public static Camera Camera;
         public static SpriteFont MediumFont;
-        public static Texture2D MissingTexture;
+        public static Sprite MissingTexture;
 
         // TODO fix this, need a better way for each tile to load content before packing atlas.
         public static Sprite GrassTile, MountainTile, TreeTile, StoneTile, StoneTopTile;
         public static Sprite WaterTile, SandTile, HouseTile;
         public static Sprite TileShadowTopLeft, TileShadowTopRight, TileShadowBottomLeft, TileShadowBottomRight;
 
+        public static TileAtlas TileAtlas { get; private set; }
         public static IsoMap Map { get; private set; }
         public static Process GameProcess
         {
@@ -90,27 +91,31 @@ namespace GVS
             // Load some default fonts.
             MediumFont = Content.Load<SpriteFont>("Fonts/MediumFont");
 
-            // Missing texture.
-            MissingTexture = Content.Load<Texture2D>("Textures/MissingTexture");
-
             // Create an instance of the isometric map.
-            Map = new IsoMap(1000, 100, 2);
+            Map = new IsoMap(100, 100, 3);
+
+            // Create the main sprite atlas.
+            TileAtlas = new TileAtlas(1024, 1024);
+
+            // Loading missing texture sprite.
+            MissingTexture = TileAtlas.Add("Textures/MissingTexture");
+            MissingTexture.Pivot = new Vector2(0.5f, 1f); // Bottom center.
 
             // Temporarily load tiles here.
-            GrassTile = Map.TileAtlas.Add("Textures/GrassTile");
-            MountainTile = Map.TileAtlas.Add("Textures/Mountain");
-            TreeTile = Map.TileAtlas.Add("Textures/Trees");
-            StoneTile = Map.TileAtlas.Add("Textures/StoneTile");
-            StoneTopTile = Map.TileAtlas.Add("Textures/StoneTop");
-            WaterTile = Map.TileAtlas.Add("Textures/WaterTile");
-            SandTile = Map.TileAtlas.Add("Textures/SandTile");
-            TileShadowTopRight = Map.TileAtlas.Add("Textures/TileShadowTopRight");
-            TileShadowTopLeft = Map.TileAtlas.Add("Textures/TileShadowTopLeft");
-            TileShadowBottomRight = Map.TileAtlas.Add("Textures/TileShadowBottomRight");
-            TileShadowBottomLeft = Map.TileAtlas.Add("Textures/TileShadowBottomLeft");
-            HouseTile = Map.TileAtlas.Add("Textures/HouseTile");
+            GrassTile = TileAtlas.Add("Textures/GrassTile");
+            MountainTile = TileAtlas.Add("Textures/Mountain");
+            TreeTile = TileAtlas.Add("Textures/Trees");
+            StoneTile = TileAtlas.Add("Textures/StoneTile");
+            StoneTopTile = TileAtlas.Add("Textures/StoneTop");
+            WaterTile = TileAtlas.Add("Textures/WaterTile");
+            SandTile = TileAtlas.Add("Textures/SandTile");
+            TileShadowTopRight = TileAtlas.Add("Textures/TileShadowTopRight");
+            TileShadowTopLeft = TileAtlas.Add("Textures/TileShadowTopLeft");
+            TileShadowBottomRight = TileAtlas.Add("Textures/TileShadowBottomRight");
+            TileShadowBottomLeft = TileAtlas.Add("Textures/TileShadowBottomLeft");
+            HouseTile = TileAtlas.Add("Textures/HouseTile");
 
-            Map.TileAtlas.Pack();
+            TileAtlas.Pack(false);
 
             // Generate isometric map.
             GenerateMap();
@@ -120,8 +125,8 @@ namespace GVS
 
         private void GenerateMap()
         {
-            Random r = new Random();
-            Noise n = new Noise(r.Next(0, 100000));
+            Random r = new Random(400);
+            Noise n = new Noise(400);
 
             // First iteration to place tiles.
             for (int x = 0; x < Map.Width; x++)
@@ -143,8 +148,8 @@ namespace GVS
 
                         if (place)
                         {
-                            const float WATER_HEIGHT = 0.55f;
-                            const float SAND_HEIGHT = 0.62f;
+                            const float WATER_HEIGHT = 0.5f;
+                            const float SAND_HEIGHT = 0.55f;
 
                             Tile t;
                             if (z == 0 && perlin < WATER_HEIGHT)
@@ -243,6 +248,8 @@ namespace GVS
         {
             Map.Draw(Main.SpriteBatch);
             Entity.DrawAll(Main.SpriteBatch);
+            SpriteBatch.Draw(MissingTexture, new Rectangle(0, 0, 64, 32), Color.White, 1f, (float)Math.Sin(Time.time * 0.5f) * 2f, 1f + 5 * Input.MousePos.X / 800f, SpriteEffects.FlipVertically);
+            SpriteBatch.Draw(Debug.Pixel, new Rectangle(0, 0, 5, 5), null, Color.Black, 0f, Vector2.Zero, SpriteEffects.None, 1f);
         }
 
         private static void UpdateCameraMove()
@@ -267,13 +274,30 @@ namespace GVS
                 zoomChange -= 1;
             if (Input.KeyDown(Keys.NumPad0))
                 zoomChange = 420;
+            if (Input.KeyDown(Keys.NumPad1))
+                zoomChange = 69;
+            if (Input.KeyDown(Keys.NumPad2))
+                zoomChange = 69420;
 
             if(zoomChange != 0)
             {
-                if (zoomChange == 420)
-                    Main.Camera.Zoom = 0.5f;
-                else
-                    Main.Camera.Zoom = MathHelper.Clamp(Main.Camera.Zoom * (zoomChange > 0 ? CHANGE_UP_SPEED : CHANGE_SPEED), 0.05f, 10f);
+                switch (zoomChange)
+                {
+                    case 420:
+                        Main.Camera.Zoom = 0.5f;
+                        break;
+                    case 69:
+                        Main.Camera.Zoom *= 2f;
+                        break;
+                    case 69420:
+                        Main.Camera.Zoom *= 0.5f;
+                        break;
+                    default:
+                        Main.Camera.Zoom *= (zoomChange > 0 ? CHANGE_UP_SPEED : CHANGE_SPEED);
+                        break;
+                }
+
+                Main.Camera.Zoom = MathHelper.Clamp(Main.Camera.Zoom, 0.02f, 10f);
             }
 
             const float BASE_SPEED = 128f * 5f;
@@ -284,8 +308,8 @@ namespace GVS
         {
             Entity.DrawAllUI(Main.SpriteBatch);
 
-            //if (Map.TileAtlas.Texture != null)
-            //    SpriteBatch.Draw(Map.TileAtlas.Texture, Vector2.One * 20, Color.White);
+            //if (TileAtlas.Texture != null)
+            //    SpriteBatch.Draw(TileAtlas.Texture, Vector2.One * 20, Color.White);
         }
     }
 }

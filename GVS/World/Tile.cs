@@ -10,6 +10,23 @@ namespace GVS.World
 
         public static Color ShadowColor = Color.Black.AlphaShift(0.5f);
 
+        public string Name
+        {
+            get
+            {
+                return name;
+            }
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    Debug.Warn($"Cannot set tile name to null or blank. ({this})");
+                    return;
+                }
+
+                name = value;
+            }
+        }
         /// <summary>
         /// The sprite that is rendered as the 'base': as the ground. If null, nothing is drawn apart from
         ///  the components.
@@ -25,6 +42,12 @@ namespace GVS.World
         /// Once the tile is drawn, this tint is reset to white. This allows for easy manipulation of ground color.
         /// </summary>
         public Color TemporarySpriteTint { get; set; } = Color.White;
+        /// <summary>
+        /// The relative height of this tile, where 1 is a full height tile, 0.5 is a half-height tile and 0
+        /// would be just the bottom face of the tile. Used to draw components and entities at the correct height.
+        /// </summary>
+        public float Height { get; protected set; } = 1f;
+
         public Point3D Position { get; internal set; }
         public IsoMap Map { get; internal set; }
         public int MaxComponentCount
@@ -36,6 +59,7 @@ namespace GVS.World
         }
         public Vector2 DrawPosition { get; protected set; }
 
+        private string name = "No-name";
         private readonly TileComponent[] components = new TileComponent[8];
 
         public float GetDrawDepth()
@@ -208,6 +232,11 @@ namespace GVS.World
             components[index] = null;
 
             return true;
+        }
+
+        public override string ToString()
+        {
+            return $"{Name} {Position}";
         }
     }
 }

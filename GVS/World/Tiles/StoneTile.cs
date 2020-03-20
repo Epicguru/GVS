@@ -4,6 +4,11 @@ namespace GVS.World.Tiles
 {
     public class StoneTile : Tile
     {
+        public StoneTile()
+        {
+            Name = "Stone";
+        }
+
         public override void Draw(SpriteBatch spr)
         {
             // Check tile above for air...

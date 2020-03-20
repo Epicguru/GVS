@@ -4,6 +4,7 @@
     {
         public WaterTile()
         {
+            Name = "Water";
             BaseSprite = Main.WaterTile;
         }
     }

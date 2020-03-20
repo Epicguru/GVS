@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using GVS.World;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -42,12 +43,18 @@ namespace GVS.Entities
                 if(entity != null && !entity.IsDestroyed && entity.internalState == 1)
                 {
                     entity.internalState = 2;
+                    entity.Map = Main.Map;
                     activeEntities.Add(entity);
+
+                    // Give it the spawn message.
+                    entity.UponActivated();
                 }
                 else if(entity != null)
                 {
                     entity.IsDestroyed = true;
                     entity.internalState = 3;
+                    entity.Map = null;
+                    // Don't give it the destroyed message because it was never spawned.
                 }
             }
             pendingEntities.Clear();
@@ -58,6 +65,11 @@ namespace GVS.Entities
 
                 if (entity.IsDestroyed)
                 {
+                    // Give despawn message, then set state.
+                    entity.UponDestroyed();
+                    entity.internalState = 3;
+                    entity.Map = null;
+
                     activeEntities.RemoveAt(i);
                     i--;
                     continue;
@@ -95,7 +107,8 @@ namespace GVS.Entities
         #endregion
 
         public string Name { get; protected set; } = "No-name";
-        public Vector2 Position;
+        public IsoMap Map { get; internal set; }
+        public Vector3 Position;
         public bool IsDestroyed { get; private set; } = false;
 
         /// <summary>
@@ -126,6 +139,41 @@ namespace GVS.Entities
         }
         
         /// <summary>
+        /// Called once when the entity has been spawned into the world, after a call to <see cref="Activate"/>.
+        /// From here you can do any logic necessary for when the entity should be spawned. This will be called before
+        /// the first call to <see cref="Update"/>.
+        /// </summary>
+        protected virtual void UponActivated()
+        {
+
+        }
+
+        /// <summary>
+        /// The default behaviour causes this entity to be immediately removed from the world.
+        /// Custom implementations by each entity type may have different behaviour.
+        /// To know if the entity has been immediately destroyed (as it will be with default implementation),
+        /// check the <see cref="IsDestroyed"/> flag after calling this method.
+        /// This is called the first frame AFTER the entity has been marked as destroyed.
+        /// </summary>
+        public virtual void Destroy()
+        {
+            IsDestroyed = true;
+        }
+
+        /// <summary>
+        /// Called once when the entity has been removed from the world. This will not be called if the entity was
+        /// never actually spawned into the world first (see <see cref="UponActivated"/>).
+        /// A call to <see cref="Destroy"/> will normally, but not necessarily (children can give custom implementations),
+        /// result in a call to this method soon afterwards.
+        /// This is called immediately before the entity is actually removed, so any changes to world state or other
+        /// entities are still valid in here.
+        /// </summary>
+        protected virtual void UponDestroyed()
+        {
+
+        }
+
+        /// <summary>
         /// Called once per frame to update the entity's logic.
         /// </summary>
         protected virtual void Update()
@@ -151,6 +199,16 @@ namespace GVS.Entities
         protected virtual void DrawUI(SpriteBatch spr)
         {
 
+        }
+
+        public Vector2 GetDrawPosition()
+        {
+            if (Map == null)
+                return Vector2.Zero;
+
+            Vector2 pos = Map.GetTileDrawPosition(this.Position);
+
+            return pos;
         }
 
         public override string ToString()

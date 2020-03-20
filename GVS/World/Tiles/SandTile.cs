@@ -4,6 +4,7 @@
     {
         public SandTile()
         {
+            Name = "Sand";
             BaseSprite = Main.SandTile;
         }
     }

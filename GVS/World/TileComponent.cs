@@ -34,6 +34,11 @@ namespace GVS.World
             return MathHelper.Clamp(aboveDepth + indexNudge, 0f, 1f);
         }
 
+        public virtual Vector2 GetDrawPosition()
+        {
+            return Map.GetTileDrawPosition(Position + new Vector3(0, 0, Tile.Height));
+        }
+
         protected internal virtual void UponAdded(Tile addedTo)
         {
 

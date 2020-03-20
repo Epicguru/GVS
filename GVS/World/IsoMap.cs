@@ -7,6 +7,8 @@ namespace GVS.World
 {
     public class IsoMap : IDisposable
     {
+        public const int TILE_SIZE = 256;
+
         /// <summary>
         /// The size of this map in tiles, on the X axis. (Towards screen bottom right)
         /// </summary>
@@ -23,7 +25,6 @@ namespace GVS.World
         public int Height { get; private set; }
 
         public float SingleTileDepth { get; private set; }
-        public TileAtlas TileAtlas { get; private set; }
 
         private readonly Tile[,,] tiles; // TODO convert to 1D array, for speed.
 
@@ -33,7 +34,6 @@ namespace GVS.World
             this.Depth = depth;
             this.Height = height;
             this.SingleTileDepth = 1f / (width * height * depth - 1);
-            TileAtlas = new TileAtlas();
 
             if (width <= 0)
                 throw new ArgumentOutOfRangeException(nameof(width), "Must be greater than zero!");
@@ -49,7 +49,6 @@ namespace GVS.World
 
         public Point GetTileDrawPosition(Point3D mapCoords)
         {
-            const int TILE_SIZE = 256;
             const int HALF_TILE = TILE_SIZE / 2;
             const int QUARTER_TILE = TILE_SIZE / 4;
 
@@ -62,6 +61,22 @@ namespace GVS.World
             y -= HALF_TILE * mapCoords.Z;
 
             return new Point(x, y);
+        }
+
+        public Vector2 GetTileDrawPosition(Vector3 mapCoords)
+        {
+            const float HALF_TILE = TILE_SIZE / 2f;
+            const float QUARTER_TILE = TILE_SIZE / 4f;
+
+            float x = HALF_TILE * mapCoords.Y;
+            float y = QUARTER_TILE * mapCoords.Y;
+
+            x -= HALF_TILE * mapCoords.X;
+            y += QUARTER_TILE * mapCoords.X;
+
+            y -= HALF_TILE * mapCoords.Z;
+
+            return new Vector2(x, y);
         }
 
         public float GetTileDrawDepth(Point3D mapCoords)
@@ -89,9 +104,8 @@ namespace GVS.World
             return MathHelper.Clamp((index / maxIndex) * MAX, 0f, MAX);
         }
 
-        public Vector2 GetTileCoordinatesFromWorldPoint(Vector2 flatWorldPos)
+        public Vector2 GetGroundPositionFromWorldPosition(Vector2 flatWorldPos, out TileSide side)
         {
-            const int TILE_SIZE = 256;
             const int H = TILE_SIZE / 2;
             const int Q = TILE_SIZE / 4;
 
@@ -107,7 +121,20 @@ namespace GVS.World
             var y = (inY + Z * H) / (2 * Q) + inX / (2 * H);
             var x = y - inX / H;
 
+            // Get the fractional part of the coordinates to compare local x and y.
+            int ix = (int)x;
+            int iy = (int)y;
+            float fx = x - ix;
+            float fy = y - iy;
+
+            side = fx < fy ? TileSide.Right : TileSide.Left;
+
             return new Vector2(x + 1, y + 1);
+        }
+
+        public Vector2 GetGroundPositionFromWorldPosition(Vector2 flatWorldPos)
+        {
+            return GetGroundPositionFromWorldPosition(flatWorldPos, out TileSide _);
         }
 
         public void Update()
@@ -128,6 +155,11 @@ namespace GVS.World
         public Tile GetTile(int x, int y, int z)
         {
             return IsPointInRange(x, y, z) ? tiles[x, y, z] : null;
+        }
+
+        public Tile GetTile(Point3D point)
+        {
+            return GetTile(point.X, point.Y, point.Z);
         }
 
         public bool SetTile(int x, int y, int z, Tile tile)
@@ -198,10 +230,10 @@ namespace GVS.World
         {
             var cam = Main.Camera;
             var bounds = cam.WorldViewBounds;
-            Vector2 topLeft = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2());
-            Vector2 topRight = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + new Vector2(bounds.Width, 0f));
-            Vector2 bottomLeft = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + bounds.Size.ToVector2() - new Vector2(bounds.Width, 0f));
-            Vector2 bottomRight = GetTileCoordinatesFromWorldPoint(bounds.Location.ToVector2() + bounds.Size.ToVector2());
+            Vector2 topLeft = GetGroundPositionFromWorldPosition(bounds.Location.ToVector2());
+            Vector2 topRight = GetGroundPositionFromWorldPosition(bounds.Location.ToVector2() + new Vector2(bounds.Width, 0f));
+            Vector2 bottomLeft = GetGroundPositionFromWorldPosition(bounds.Location.ToVector2() + bounds.Size.ToVector2() - new Vector2(bounds.Width, 0f));
+            Vector2 bottomRight = GetGroundPositionFromWorldPosition(bounds.Location.ToVector2() + bounds.Size.ToVector2());
 
             //Debug.Box(bounds, Color.Red.AlphaShift(0.05f));
             //Point size = new Point(10, 10);
@@ -270,12 +302,18 @@ namespace GVS.World
 
         public void Dispose()
         {
-            TileAtlas.Dispose();
+
         }
 
         public override string ToString()
         {
             return $"IsoMap [{Width}x{Depth}x{Height}]";
+        }
+
+        public enum TileSide
+        {
+            Left,
+            Right
         }
     }
 }

@@ -58,6 +58,18 @@ namespace GVS
         public static bool HasResumed { get; private set; }
 
         /// <summary>
+        /// The total elapsed time in seconds since the game was launched. This IS affected by <see cref="TimeScale"/>,
+        /// so it may not represent the real-world elapsed time.
+        /// </summary>
+        public static float time { get; private set; }
+
+        /// <summary>
+        /// The total elapsed time in seconds since the game was launched. This IS NOT affected by <see cref="TimeScale"/>,
+        /// so it should, under ideal conditions, represents real-world elapsed time.
+        /// </summary>
+        public static float unscaledTime { get; private set; }
+
+        /// <summary>
         /// The deltaTime scale factor. A value of 1 is normal time. A value smaller than 1 is slow-motion.
         /// A value greater than one will speed up time. Minimum value is 0, which will freeze time. There is no upper
         /// limit, but very high values may break things.
@@ -107,6 +119,9 @@ namespace GVS
             
             doubleDeltaTime = doubleUnscaledDeltaTime * TimeScale;
             deltaTime = (float)doubleDeltaTime;
+
+            time += deltaTime;
+            unscaledTime += unscaledDeltaTime;
 
             // Restart timer.
             timer.Restart();

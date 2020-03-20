@@ -4,6 +4,7 @@
     {
         public GrassTile()
         {
+            Name = "Grass";
             BaseSprite = Main.GrassTile;
         }
     }

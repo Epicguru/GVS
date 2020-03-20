@@ -5,9 +5,10 @@ namespace GVS.Sprites
 {
     public class Sprite
     {
+        public string Name { get; set; }
         public Texture2D Texture { get; set; }
         public Rectangle Region { get; set; }
-        public int DrawScale { get; set; } = 1;
+        public float DrawScale { get; } = 1; // In a future version, with multi-resolution tile support, this will allow sprites to be draw automatically scaled when they don't match size.
         public Vector2 Pivot { get; set; } = Vector2.Zero;
 
         /// <summary>
@@ -20,11 +21,17 @@ namespace GVS.Sprites
         {
             this.Texture = texture;
             this.Region = region;
+            this.Name = texture?.Name;
 
             if (region == Rectangle.Empty && texture != null)
             {
                 this.Region = new Rectangle(0, 0, texture.Width, texture.Height);
             }
+        }
+
+        public override string ToString()
+        {
+            return Name ?? "no-name";
         }
     }
 }
