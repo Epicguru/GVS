@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Diagnostics;
 using System.Threading;
+using GVS.Entities;
 using GVS.World;
 
 namespace GVS
@@ -261,13 +262,13 @@ namespace GVS
             Debug.Text($"FPS: {Framerate:F0} (Target: {(TargetFramerate == 0 ? "uncapped" : TargetFramerate.ToString("F0"))}, VSync: {VSyncMode})");
             Debug.Text($"Time Scale: {Time.TimeScale}");
             Debug.Text($"Screen Res: ({Screen.Width}x{Screen.Height})");
-            Debug.Text($"Used memory: {Main.GameProcess.VirtualMemorySize64 / 1024 / 1024}MB.");
+            Debug.Text($"Used memory: {Main.GameProcess.PrivateMemorySize64 / 1024 / 1024}MB.");
             Debug.Text($"Texture Swap Count: {Loop.Statistics.DrawMetrics.TextureCount}");
             Debug.Text($"Draw Calls: {Loop.Statistics.DrawMetrics.DrawCount}");
             Debug.Text($"Sprites Drawn: {Loop.Statistics.DrawMetrics.SpriteCount}");
-            //Debug.Text($"Total Entities: {JEngine.Entities.EntityCount} of {JEngine.Entities.MaxEntityCount}.");
+            Debug.Text($"Total Entities: {Entity.SpawnedCount}.");
 
-            Tile selectedTile = GetTileFromWorldPosition(Input.MouseWorldPos);
+            Tile selectedTile = Input.TileUnderMouse;
             Debug.Text($"Tile under mouse: {(selectedTile == null ? "null" : selectedTile.ToString())}");
             if (selectedTile != null)
                 selectedTile.TemporarySpriteTint = Color.Orange;
@@ -276,73 +277,6 @@ namespace GVS
             Main.MainUpdate();
 
             Input.EndFrame();
-        }
-
-        private static Tile GetTileFromWorldPosition(Vector2 flatWorldPosition)
-        {
-            int maxZ = Main.Map.Height - 1; // The maximum Z to consider. Allow for selection when top layers are hidden.
-
-            Vector2 pos = Main.Map.GetGroundPositionFromWorldPosition(flatWorldPosition, out IsoMap.TileSide side);
-            Point groundPos = new Point((int)pos.X, (int)pos.Y);
-
-            // Identify the columns to consider.
-            Point topA = new Point(groundPos.X, groundPos.Y);
-            Point topB = side == IsoMap.TileSide.Right ? topA + new Point(0, 1) : topA + new Point(1, 0);
-
-            // Start from bottom upwards, top to down, B then A.
-            // First tile to 'collide' is the selected tile.
-
-            // How far down the columns should we go?
-            int downA = maxZ;
-            int downB = maxZ - 1;
-
-            Point bottomA = topA + new Point(downA, downA);
-            Point bottomB = topB + new Point(downB, downB);
-
-            Point bPoint = bottomB;
-            Point aPoint = bottomA;
-            int i = 0;
-            var map = Main.Map;
-            while (true)
-            {
-                // Start with B, then A, then B...
-                Tile t;
-
-                // A! Two tiles to check!
-                int aZ = maxZ + 1 - i; // This is out of bounds when i = 0, because of the way the universe works.
-                if (aZ <= maxZ)
-                {
-                    t = map.GetTile(aPoint.X, aPoint.Y, aZ);
-                    if (IsSelectable(t))
-                        return t;
-                }
-                aZ = maxZ - i; // This will also be out of bounds on the last iteration.
-                if (aZ < 0)
-                    return null; // Quit, tile not found anywhere.
-
-                t = map.GetTile(aPoint.X, aPoint.Y, aZ);
-                if (IsSelectable(t))
-                    return t;
-
-                // B!
-                int bZ = maxZ - i;
-                if(bZ != 0)
-                {
-                    t = map.GetTile(bPoint.X, bPoint.Y, bZ);
-                    if (IsSelectable(t))
-                        return t;
-                }
-
-                // Increase counter and move the two points upwards.
-                i++;
-                aPoint -= new Point(1, 1);
-                bPoint -= new Point(1, 1);
-            }
-
-            bool IsSelectable(Tile t)
-            {
-                return t != null;
-            }
         }
 
         private static void Draw(SpriteBatch spr)

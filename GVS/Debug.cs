@@ -128,7 +128,7 @@ namespace GVS
             if (name == null)
                 Warn("No timers are currently running, cannot stop.");
 
-            return StopInternal(name, log, out bool stopped);
+            return StopInternal(name, log, out bool _);
         }
 
         private static TimeSpan StopInternal(string key, bool log, out bool didStop)

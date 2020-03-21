@@ -6,7 +6,7 @@ namespace GVS.Sprites
     public class Sprite
     {
         public string Name { get; set; }
-        public Texture2D Texture { get; set; }
+        public Texture2D Texture { get; private set; }
         public Rectangle Region { get; set; }
         public float DrawScale { get; } = 1; // In a future version, with multi-resolution tile support, this will allow sprites to be draw automatically scaled when they don't match size.
         public Vector2 Pivot { get; set; } = Vector2.Zero;
@@ -27,6 +27,11 @@ namespace GVS.Sprites
             {
                 this.Region = new Rectangle(0, 0, texture.Width, texture.Height);
             }
+        }
+
+        public virtual void SetTexture(Texture2D t)
+        {
+            this.Texture = t;
         }
 
         public override string ToString()

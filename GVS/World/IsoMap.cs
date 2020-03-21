@@ -79,7 +79,7 @@ namespace GVS.World
             return new Vector2(x, y);
         }
 
-        public float GetTileDrawDepth(Point3D mapCoords)
+        public float GetTileDrawDepth(Vector3 mapCoords)
         {
             const float MAX = 0.9f;
 

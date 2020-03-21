@@ -1,4 +1,5 @@
 ﻿using GVS.Entities;
+using GVS.Entities.Instances;
 using GVS.Sprites;
 using GVS.World;
 using GVS.World.Generation;
@@ -27,14 +28,15 @@ namespace GVS
         public static SpriteBatch SpriteBatch;
         public static Camera Camera;
         public static SpriteFont MediumFont;
-        public static Sprite MissingTexture;
+        public static Sprite MissingTextureSprite;
 
         // TODO fix this, need a better way for each tile to load content before packing atlas.
         public static Sprite GrassTile, MountainTile, TreeTile, StoneTile, StoneTopTile;
         public static Sprite WaterTile, SandTile, HouseTile;
         public static Sprite TileShadowTopLeft, TileShadowTopRight, TileShadowBottomLeft, TileShadowBottomRight;
 
-        public static TileAtlas TileAtlas { get; private set; }
+        public static AnimatedSprite LoadingIconSprite { get; private set; }
+        public static TileAtlas SpriteAtlas { get; private set; }
         public static IsoMap Map { get; private set; }
         public static Process GameProcess
         {
@@ -48,6 +50,7 @@ namespace GVS
         public static Rectangle ClientBounds { get; private set; }
 
         private static Main main;
+        private static float loadIconTimer;
 
         private Process thisProcess;
 
@@ -94,28 +97,32 @@ namespace GVS
             // Create an instance of the isometric map.
             Map = new IsoMap(100, 100, 3);
 
+            // Load loading icon atlas.
+            LoadingIconSprite = new AnimatedSprite(Content.Load<Texture2D>("Textures/LoadingIconAtlas"), 128, 128, 60);
+            LoadingIconSprite.Pivot = new Vector2(0.5f, 0.5f);
+
             // Create the main sprite atlas.
-            TileAtlas = new TileAtlas(1024, 1024);
+            SpriteAtlas = new TileAtlas(1024, 1024);
 
             // Loading missing texture sprite.
-            MissingTexture = TileAtlas.Add("Textures/MissingTexture");
-            MissingTexture.Pivot = new Vector2(0.5f, 1f); // Bottom center.
+            MissingTextureSprite = SpriteAtlas.Add("Textures/MissingTexture");
+            MissingTextureSprite.Pivot = new Vector2(0.5f, 1f); // Bottom center.
 
             // Temporarily load tiles here.
-            GrassTile = TileAtlas.Add("Textures/GrassTile");
-            MountainTile = TileAtlas.Add("Textures/Mountain");
-            TreeTile = TileAtlas.Add("Textures/Trees");
-            StoneTile = TileAtlas.Add("Textures/StoneTile");
-            StoneTopTile = TileAtlas.Add("Textures/StoneTop");
-            WaterTile = TileAtlas.Add("Textures/WaterTile");
-            SandTile = TileAtlas.Add("Textures/SandTile");
-            TileShadowTopRight = TileAtlas.Add("Textures/TileShadowTopRight");
-            TileShadowTopLeft = TileAtlas.Add("Textures/TileShadowTopLeft");
-            TileShadowBottomRight = TileAtlas.Add("Textures/TileShadowBottomRight");
-            TileShadowBottomLeft = TileAtlas.Add("Textures/TileShadowBottomLeft");
-            HouseTile = TileAtlas.Add("Textures/HouseTile");
+            GrassTile = SpriteAtlas.Add("Textures/GrassTile");
+            MountainTile = SpriteAtlas.Add("Textures/Mountain");
+            TreeTile = SpriteAtlas.Add("Textures/Trees");
+            StoneTile = SpriteAtlas.Add("Textures/StoneTile");
+            StoneTopTile = SpriteAtlas.Add("Textures/StoneTop");
+            WaterTile = SpriteAtlas.Add("Textures/WaterTile");
+            SandTile = SpriteAtlas.Add("Textures/SandTile");
+            TileShadowTopRight = SpriteAtlas.Add("Textures/TileShadowTopRight");
+            TileShadowTopLeft = SpriteAtlas.Add("Textures/TileShadowTopLeft");
+            TileShadowBottomRight = SpriteAtlas.Add("Textures/TileShadowBottomRight");
+            TileShadowBottomLeft = SpriteAtlas.Add("Textures/TileShadowBottomLeft");
+            HouseTile = SpriteAtlas.Add("Textures/HouseTile");
 
-            TileAtlas.Pack(false);
+            SpriteAtlas.Pack(false);
 
             // Generate isometric map.
             GenerateMap();
@@ -240,6 +247,27 @@ namespace GVS
                 Debug.Log($"Toggled update view bounds: {Camera.UpdateViewBounds}");
             }
 
+            if (Input.KeyDown(Keys.R))
+            {
+                Tile underMouse = Input.TileUnderMouse;
+                if (underMouse != null)
+                {
+                    var spawned = new DevTroop();
+                    spawned.Position = underMouse.Position;
+
+                    spawned.Activate();
+                }
+            }
+
+            // Update loading icon.
+            loadIconTimer += Time.unscaledDeltaTime;
+            const float INTERVAL = 1f / 60f;
+            while(loadIconTimer >= INTERVAL)
+            {
+                LoadingIconSprite.ChangeFrame(1, true);
+                loadIconTimer -= INTERVAL;
+            }
+
             Map.Update();
             Entity.UpdateAll();
         }
@@ -248,8 +276,6 @@ namespace GVS
         {
             Map.Draw(Main.SpriteBatch);
             Entity.DrawAll(Main.SpriteBatch);
-            SpriteBatch.Draw(MissingTexture, new Rectangle(0, 0, 64, 32), Color.White, 1f, (float)Math.Sin(Time.time * 0.5f) * 2f, 1f + 5 * Input.MousePos.X / 800f, SpriteEffects.FlipVertically);
-            SpriteBatch.Draw(Debug.Pixel, new Rectangle(0, 0, 5, 5), null, Color.Black, 0f, Vector2.Zero, SpriteEffects.None, 1f);
         }
 
         private static void UpdateCameraMove()
@@ -307,6 +333,9 @@ namespace GVS
         internal static void MainDrawUI()
         {
             Entity.DrawAllUI(Main.SpriteBatch);
+
+            // Draw loading icon.
+            Main.SpriteBatch.Draw(LoadingIconSprite, new Vector2(64 + 20f, Screen.Height - 64 - 30f + (float)Math.Sin(Time.time * 5f) * 24f), Color.White, 0f);
 
             //if (TileAtlas.Texture != null)
             //    SpriteBatch.Draw(TileAtlas.Texture, Vector2.One * 20, Color.White);

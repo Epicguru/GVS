@@ -15,7 +15,7 @@ namespace GVS.Sprites
             bool useTex = s.Texture != null && !s.Texture.IsDisposed;
             if (!useTex)
             {
-                spr.Draw(Main.MissingTexture, destination, color, depth, rotation, scale, effects);
+                spr.Draw(Main.MissingTextureSprite, destination, color, depth, rotation, scale, effects);
                 return;
             }
 

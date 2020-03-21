@@ -226,14 +226,14 @@ namespace GVS.World
                     Debug.Error($"Failed to pack {pp.Texture.Name} into the atlas!");
                     if (allowUnpackedSprites)
                     {
-                        pp.Sprite.Texture = pp.Texture;
+                        pp.Sprite.SetTexture(pp.Texture);
                         pp.Sprite.Region = new Rectangle(0, 0, pp.Texture.Width, pp.Texture.Height);
                         pp.Sprite.Name = pp.Texture.Name;
                         Debug.Warn("The sprite will still function, but will have greatly decreased performance.");
                     }
                     else
                     {
-                        pp.Sprite.Texture = null;
+                        pp.Sprite.SetTexture(null);
                         pp.Sprite.Name = pp.Texture.Name;
                         pp.Sprite.Region = new Rectangle(0, 0, pp.Texture.Width, pp.Texture.Height);
                         Debug.Warn("The sprite will be invalid (will show missing texture)");
@@ -245,7 +245,7 @@ namespace GVS.World
                 Blit(pp.Texture, tex, packedPos, Padding);
 
                 // Set up the sprite to have the final data.
-                pp.Sprite.Texture = tex;
+                pp.Sprite.SetTexture(tex);
                 pp.Sprite.Name = pp.Texture.Name;
                 pp.Sprite.Region = new Rectangle(packedPos.X + Padding, packedPos.Y + padding, pp.Texture.Width, pp.Texture.Height);
 
@@ -383,7 +383,7 @@ namespace GVS.World
                 {
                     var sprite = pair.Value;
                     if (sprite != null)
-                        sprite.Texture = null;
+                        sprite.SetTexture(null);
                 }
                 packedSprites.Clear();
                 packedSprites = null;

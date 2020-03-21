@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using GVS.World;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
 namespace GVS
@@ -15,11 +16,19 @@ namespace GVS
         public static bool Enabled { get; set; } = true;
 
         public static Point MousePos { get; private set; }
+        public static Tile TileUnderMouse
+        {
+            get
+            {
+                return tileUnderMouse?.Map == null ? null : tileUnderMouse;
+            }
+        }
         public static Vector2 MouseWorldPos { get; private set; }
         public static bool MouseInWindow { get; private set; }
         public static int MouseScroll { get; private set; }
         public static int MouseScrollDelta { get; private set; }
 
+        private static Tile tileUnderMouse;
         private static KeyboardState currentKeyState;
         private static KeyboardState lastKeyState;
 
@@ -40,6 +49,8 @@ namespace GVS
 
             MouseScrollDelta = currentMouseState.ScrollWheelValue - MouseScroll;
             MouseScroll = currentMouseState.ScrollWheelValue;
+
+            tileUnderMouse = GetTileFromWorldPosition(MouseWorldPos);
         }
 
         public static bool KeyPressed(Keys key)
@@ -135,6 +146,73 @@ namespace GVS
         public static void EndFrame()
         {
 
+        }
+
+        private static Tile GetTileFromWorldPosition(Vector2 flatWorldPosition)
+        {
+            int maxZ = Main.Map.Height - 1; // The maximum Z to consider. Allow for selection when top layers are hidden.
+
+            Vector2 pos = Main.Map.GetGroundPositionFromWorldPosition(flatWorldPosition, out IsoMap.TileSide side);
+            Point groundPos = new Point((int)pos.X, (int)pos.Y);
+
+            // Identify the columns to consider.
+            Point topA = new Point(groundPos.X, groundPos.Y);
+            Point topB = side == IsoMap.TileSide.Right ? topA + new Point(0, 1) : topA + new Point(1, 0);
+
+            // Start from bottom upwards, top to down, B then A.
+            // First tile to 'collide' is the selected tile.
+
+            // How far down the columns should we go?
+            int downA = maxZ;
+            int downB = maxZ - 1;
+
+            Point bottomA = topA + new Point(downA, downA);
+            Point bottomB = topB + new Point(downB, downB);
+
+            Point bPoint = bottomB;
+            Point aPoint = bottomA;
+            int i = 0;
+            var map = Main.Map;
+            while (true)
+            {
+                // Start with B, then A, then B...
+                Tile t;
+
+                // A! Two tiles to check!
+                int aZ = maxZ + 1 - i; // This is out of bounds when i = 0, because of the way the universe works.
+                if (aZ <= maxZ)
+                {
+                    t = map.GetTile(aPoint.X, aPoint.Y, aZ);
+                    if (IsSelectable(t))
+                        return t;
+                }
+                aZ = maxZ - i; // This will also be out of bounds on the last iteration.
+                if (aZ < 0)
+                    return null; // Quit, tile not found anywhere.
+
+                t = map.GetTile(aPoint.X, aPoint.Y, aZ);
+                if (IsSelectable(t))
+                    return t;
+
+                // B!
+                int bZ = maxZ - i;
+                if (bZ != 0)
+                {
+                    t = map.GetTile(bPoint.X, bPoint.Y, bZ);
+                    if (IsSelectable(t))
+                        return t;
+                }
+
+                // Increase counter and move the two points upwards.
+                i++;
+                aPoint -= new Point(1, 1);
+                bPoint -= new Point(1, 1);
+            }
+
+            bool IsSelectable(Tile t)
+            {
+                return t != null;
+            }
         }
     }
 }

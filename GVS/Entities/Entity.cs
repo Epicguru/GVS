@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using GVS.Sprites;
 using GVS.World;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -8,6 +9,11 @@ namespace GVS.Entities
     public abstract class Entity
     {
         #region Static
+
+        public static int SpawnedCount
+        {
+            get { return activeEntities.Count; }
+        }
 
         private static readonly List<Entity> activeEntities = new List<Entity>();
         private static readonly List<Entity> pendingEntities = new List<Entity>();
@@ -120,6 +126,16 @@ namespace GVS.Entities
         /// </summary>
         private byte internalState = 0;
 
+        ~Entity()
+        {
+            // If the entity is garbage collected and still has state 0, it is probably an oversight from the developer
+            // who failed to call Activate().
+            if(internalState == 0)
+            {
+                Debug.Warn($"Entity {this} was garbage collected in state 0. Did you forget to call Activate()?");
+            }
+        }
+
         /// <summary>
         /// Causes this entity to be spawned into the world. If your entity isn't showing up or rendering,
         /// make sure this has been called.
@@ -185,8 +201,8 @@ namespace GVS.Entities
         /// Called once per frame to draw the entity into the world. Avoid 'logic' code in here, such as Input
         /// or movement.
         /// </summary>
-        /// <param name="spr">The SpriteBatch to draw the entity with. Positions and sizes will be in world-space.</param>
-        protected virtual void Draw(SpriteBatch spr)
+        /// <param name="sb">The SpriteBatch to draw the entity with. Positions and sizes will be in world-space.</param>
+        protected virtual void Draw(SpriteBatch sb)
         {
 
         }
@@ -195,25 +211,50 @@ namespace GVS.Entities
         /// Called once per frame to draw UI. This can be used to draw any kind of UI, but in-world UI is preferred
         /// since the draw order of this is basically random.
         /// </summary>
-        /// <param name="spr">The SpriteBatch to draw with. Positions and sizes will be in screen-space.</param>
-        protected virtual void DrawUI(SpriteBatch spr)
+        /// <param name="sb">The SpriteBatch to draw with. Positions and sizes will be in screen-space.</param>
+        protected virtual void DrawUI(SpriteBatch sb)
         {
 
         }
 
-        public Vector2 GetDrawPosition()
+        protected void DrawSprite(SpriteBatch sb, Sprite sprite)
+        {
+            this.DrawSprite(sb, sprite, Color.White, Vector2.Zero);
+        }
+
+        protected virtual void DrawSprite(SpriteBatch sb, Sprite sprite, Color tint, Vector2 offset, float rotation = 0f, float scale = 1f, SpriteEffects effects = SpriteEffects.None)
+        {
+            sb.Draw(sprite, GetDrawPosition() + offset, tint, GetDrawDepth(), rotation, scale, effects);
+        }
+
+        public virtual Vector2 GetDrawPosition()
         {
             if (Map == null)
                 return Vector2.Zero;
 
             Vector2 pos = Map.GetTileDrawPosition(this.Position);
 
+            // Add on the offset to place at center of tile surface that corresponds to current position.
+            pos.X += IsoMap.TILE_SIZE * 0.5f;
+            pos.Y += IsoMap.TILE_SIZE * 0.25f;
+
             return pos;
+        }
+
+        public virtual float GetDrawDepth()
+        {
+            // The depth of the tile above - to ensure that it draws on top of the target tile.
+            float tileAboveDepth = Map.GetTileDrawDepth(this.Position + new Vector3(0, 0, 1f));
+
+            // The additional depth to draw on top of components of that tile.
+            float toAdd = 0.5f * Map.SingleTileDepth;
+
+            return tileAboveDepth + toAdd;
         }
 
         public override string ToString()
         {
-            return Name ?? "null-name";
+            return $"{(Name ?? "null-name")} {Position}";
         }
     }
 }
