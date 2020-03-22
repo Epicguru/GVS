@@ -60,6 +60,8 @@
     <Compile Include="Rand.cs" />
     <Compile Include="Screen.cs" />
     <Compile Include="Screens\GameScreen.cs" />
+    <Compile Include="Screens\Instances\PlayScreen.cs" />
+    <Compile Include="Screens\Instances\SplashScreen.cs" />
     <Compile Include="Screens\ScreenManager.cs" />
     <Compile Include="Sprites\AnimatedSprite.cs" />
     <Compile Include="Sprites\Sprite.cs" />

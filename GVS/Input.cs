@@ -150,6 +150,9 @@ namespace GVS
 
         private static Tile GetTileFromWorldPosition(Vector2 flatWorldPosition)
         {
+            if (Main.Map == null)
+                return null;
+
             int maxZ = Main.Map.Height - 1; // The maximum Z to consider. Allow for selection when top layers are hidden.
 
             Vector2 pos = Main.Map.GetGroundPositionFromWorldPosition(flatWorldPosition, out IsoMap.TileSide side);

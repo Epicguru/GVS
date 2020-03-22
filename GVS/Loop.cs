@@ -90,7 +90,9 @@ namespace GVS
             }
         }
 
-        public static Thread Thread;
+        public static Thread Thread { get; private set; }
+        public static bool IsBackupThreadActive { get; internal set; }
+        public static Thread BackupThread { get; private set; }
         public static bool Running { get; private set; }
         public static bool ThreadQuit { get; private set; }
         public static bool InUIDraw { get; private set; }
@@ -106,6 +108,7 @@ namespace GVS
         }
         public static Stats Statistics { get; private set; } = new Stats();
 
+        private static readonly object drawKey = new object();
         private static float targetFramerate;
         private static int cumulativeFrames;
         private static readonly Stopwatch frameTimer = new Stopwatch();
@@ -131,7 +134,12 @@ namespace GVS
             Thread.Name = "Game Loop";
             Thread.Priority = ThreadPriority.Highest;
 
+            BackupThread = new Thread(RunBackup);
+            BackupThread.Name = "Backup Rendering Thread";
+            BackupThread.Priority = ThreadPriority.AboveNormal;
+
             Thread.Start();
+            BackupThread.Start();
             frameTimer.Start();
             Framerate = 0;
             ImmediateFramerate = 0;
@@ -189,7 +197,10 @@ namespace GVS
                 Statistics.FrameUpdateTime = updateTime;
 
                 watch.Restart();
-                Draw(spr);
+                lock (drawKey)
+                {
+                    Draw(spr);
+                }
                 watch.Stop();
                 renderTime = watch.Elapsed.TotalSeconds;
                 Statistics.FrameDrawTime = renderTime;
@@ -214,7 +225,7 @@ namespace GVS
                     }
                     else
                     {
-                        // Sleep by slowly creeping up to the target time in a loop.
+                        // Sleep by slowly creeping up to the target time in a loop. Sometimes more accurate.
                         watch3.Restart();
                         while (watch3.Elapsed.TotalSeconds + (0.001) < sleep)
                         {
@@ -239,6 +250,33 @@ namespace GVS
             ThreadQuit = true;
             Thread = null;
             Debug.Log("Stopped game loop!");
+        }
+
+        private static void RunBackup()
+        {
+            SpriteBatch spr2 = new SpriteBatch(Main.GlobalGraphicsDevice);
+
+            const float TARGET_FRAMERATE = 30f;
+            const float DELTA_TIME = 1f / TARGET_FRAMERATE;
+            const int WAIT_TIME = (int) (1000f / TARGET_FRAMERATE);
+
+            while (Running)
+            {
+                Thread.Sleep(WAIT_TIME);
+                if (IsBackupThreadActive)
+                {
+                    lock (drawKey)
+                    {
+                        spr2.Begin();
+                        spr2.Draw(Debug.Pixel, new Rectangle(0, 0, Screen.Width, Screen.Height), Color.Black);
+                        Main.ScreenManager.DrawUIBackupThread(spr2, DELTA_TIME);
+                        spr2.End();
+                    }
+                    Present();
+                }
+            }
+
+            spr2.Dispose();
         }
 
         private static void Begin()

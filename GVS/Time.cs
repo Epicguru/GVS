@@ -13,13 +13,6 @@ namespace GVS
         public static double MaxElapsedTime { get; set; } = 1.0;
 
         /// <summary>
-        /// The elapsed (delta) time between frames after which the time will be set to a value of 1/60 (60fps) and then resumed as normal.
-        /// Set to zero to disable.
-        /// This is a debug feature for when the game execution is paused. Should be disabled in release builds.
-        /// </summary>
-        public static double ResumeElapsedTime { get; set; } = 5.0;
-
-        /// <summary>
         /// The elapsed time between frames, multiplied by the time scale.
         /// Multiply this value with another one to make it be 'per second' instead of 'per frame'.
         /// </summary>
@@ -50,12 +43,6 @@ namespace GVS
         /// When this happens, the deltaTime value is clamped, which can lead to things running slower than they should but can avoid bugs.
         /// </summary>
         public static bool IsRunningSlowly { get; private set; }
-
-        /// <summary>
-        /// True on any frame where the elapsed time between frames is greater than <see cref="ResumeElapsedTime"/>.
-        /// Should never happen in release builds.
-        /// </summary>
-        public static bool HasResumed { get; private set; }
 
         /// <summary>
         /// The total elapsed time in seconds since the game was launched. This IS affected by <see cref="TimeScale"/>,
@@ -90,6 +77,7 @@ namespace GVS
 
         private static double timeScale = 1f;
         private static readonly Stopwatch timer = new Stopwatch();
+        private static bool forceNormalTime = false;
 
         public static void StartFrame()
         {
@@ -98,7 +86,6 @@ namespace GVS
 
             // Reset variables.
             IsRunningSlowly = false;
-            HasResumed = false;
 
             // Check elapsed time...
             var elapsed = timer.Elapsed.TotalSeconds;
@@ -107,11 +94,12 @@ namespace GVS
                 elapsed = MaxElapsedTime;
                 IsRunningSlowly = true;
             }
-            if (ResumeElapsedTime != 0.0 && elapsed > ResumeElapsedTime)
+
+            if (forceNormalTime)
             {
-                elapsed = 1.0 / 60.0;
-                HasResumed = true;
                 IsRunningSlowly = false;
+                elapsed = 1f / 60f;
+                forceNormalTime = false;
             }
 
             doubleUnscaledDeltaTime = elapsed;
@@ -125,6 +113,15 @@ namespace GVS
 
             // Restart timer.
             timer.Restart();
+        }
+
+        /// <summary>
+        /// Forces the deltaTime value to be 1/60 (60fps) for the next frame.
+        /// Only affects a single frame.
+        /// </summary>
+        public static void ForceNormalTime()
+        {
+            forceNormalTime = true;
         }
     }
 }

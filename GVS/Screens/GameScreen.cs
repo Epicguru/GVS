@@ -5,6 +5,9 @@ namespace GVS.Screens
     public abstract class GameScreen
     {
         public string Name { get; protected set; }
+        public string LoadingScreenText { get; protected set; } = "Loading data...";
+        public bool IsActive { get; internal set; }
+        public ScreenManager Manager { get; internal set; }
 
         protected GameScreen(string name)
         {
@@ -20,5 +23,10 @@ namespace GVS.Screens
         public virtual void Update() { }
         public virtual void Draw(SpriteBatch sb) { }
         public virtual void DrawUI(SpriteBatch sb) { }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }
