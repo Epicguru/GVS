@@ -20,6 +20,7 @@ namespace GVS.Screens
         private GameScreen toTransitionTo;
         private GameScreen loading;
         private bool hasStartedLoading;
+        private float inLoadAlpha;
 
         internal void Init(GameScreen gs)
         {
@@ -207,6 +208,7 @@ namespace GVS.Screens
                 // Load. This will block. Another thread will do the simple rendering in the meantime.
                 Time.ForceNormalTime();
                 Loop.IsBackupThreadActive = true;
+                inLoadAlpha = -0.5f; // Hide it for a second or two, then fade in loading screen.
                 loading.Load();
                 Loop.IsBackupThreadActive = false;
 
@@ -265,16 +267,21 @@ namespace GVS.Screens
 
         public void DrawUIBackupThread(SpriteBatch spr, float dt)
         {
+            inLoadAlpha += dt * 0.75f;
+
+            float a = MathHelper.Clamp(inLoadAlpha, 0f, 1f);
+            Color tint = new Color(1f, 1f, 1f, a);
+
             string toDraw = loading?.LoadingScreenText;
             if(toDraw != null)
             {
                 Vector2 size = Main.MediumFont.MeasureString(toDraw);
-                spr.DrawString(Main.MediumFont, toDraw, new Vector2((Screen.Width - size.X) * 0.5f, (Screen.Height - size.Y) * 0.5f + 80f), Color.White);
+                spr.DrawString(Main.MediumFont, toDraw, new Vector2((Screen.Width - size.X) * 0.5f, (Screen.Height - size.Y) * 0.5f + 80f), tint);
             }
 
             // Advance the frames on this loading icon.
             Main.LoadingIconSprite.ChangeFrame(1);
-            spr.Draw(Main.LoadingIconSprite, new Vector2(Screen.Width * 0.5f, Screen.Height * 0.5f), Color.White, 0f);
+            spr.Draw(Main.LoadingIconSprite, new Vector2(Screen.Width * 0.5f, Screen.Height * 0.5f), tint, 0f);
         }
     }
 }

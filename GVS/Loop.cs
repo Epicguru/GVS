@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Diagnostics;
 using System.Threading;
+using GeonBit.UI;
 using GVS.Entities;
 using GVS.World;
 
@@ -256,7 +257,7 @@ namespace GVS
         {
             SpriteBatch spr2 = new SpriteBatch(Main.GlobalGraphicsDevice);
 
-            const float TARGET_FRAMERATE = 30f;
+            const float TARGET_FRAMERATE = 60f;
             const float DELTA_TIME = 1f / TARGET_FRAMERATE;
             const int WAIT_TIME = (int) (1000f / TARGET_FRAMERATE);
 
@@ -267,7 +268,7 @@ namespace GVS
                 {
                     lock (drawKey)
                     {
-                        spr2.Begin();
+                        spr2.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
                         spr2.Draw(Debug.Pixel, new Rectangle(0, 0, Screen.Width, Screen.Height), Color.Black);
                         Main.ScreenManager.DrawUIBackupThread(spr2, DELTA_TIME);
                         spr2.End();
@@ -323,7 +324,7 @@ namespace GVS
             Main.GlobalGraphicsDevice.Clear(ClearColor);
 
             SamplerState s = Main.Camera.Zoom >= 1 ? SamplerState.PointClamp : SamplerState.LinearClamp;
-            spr.Begin(SpriteSortMode.FrontToBack, null, s, null, null, null, Main.Camera.GetMatrix());
+            spr.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend, s, null, null, null, Main.Camera.GetMatrix());
 
             // Main world draw.
             Main.MainDraw();
@@ -335,13 +336,18 @@ namespace GVS
             spr.End();
 
             InUIDraw = true;
-            spr.Begin(SpriteSortMode.Deferred, null, null, null, null, null, null);
+
+
+            spr.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, null);
 
             // Draw the UI.
             Main.MainDrawUI();
             Debug.DrawUI(spr);
 
             spr.End();
+
+            // Draw Geon UI (has to be outside of spritebatch region.)
+            UserInterface.Active.Draw(spr);
             InUIDraw = false;
         }
 

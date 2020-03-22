@@ -23,7 +23,7 @@ namespace GVS.Screens.Instances
             if (timer > 1f)
             {
                 timer = -100; // Just to make sure it doesn't trigger twice.
-                Manager.ChangeScreen<PlayScreen>();
+                Manager.ChangeScreen<MainMenuScreen>();
             }
         }
 
@@ -31,7 +31,7 @@ namespace GVS.Screens.Instances
         {
             if(Main.LoadingIconSprite != null)
             {
-                sb.Draw(Main.LoadingIconSprite, new Vector2(Screen.Width * 0.5f, Screen.Height * 0.5f), Color.White, 0f);
+                sb.Draw(Main.MissingTextureSprite, new Vector2(Screen.Width * 0.5f, Screen.Height * 0.5f), Color.White, 0f);
             }
         }
     }

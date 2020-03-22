@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using GeonBit.UI;
 
 namespace GVS
 {
@@ -65,6 +66,11 @@ namespace GVS
             thisProcess = Process.GetCurrentProcess();
         }
 
+        internal static void ForceExitGame()
+        {
+            main.Exit();
+        }
+
         protected override void Update(GameTime gameTime)
         {
             ClientBounds = Window.ClientBounds;
@@ -85,11 +91,16 @@ namespace GVS
             // Register some screens.
             ScreenManager.Register(new SplashScreen());
             ScreenManager.Register(new PlayScreen());
+            ScreenManager.Register(new MainMenuScreen());
 
             ScreenManager.Init(ScreenManager.GetScreen<SplashScreen>());
 
             // Init debug.
             Debug.Init();
+
+            // Init GeonBit.UI
+            UserInterface.Initialize(ContentManager, BuiltinThemes.editor);
+            UserInterface.Active.ShowCursor = false;
 
             base.Initialize();
         }
@@ -154,6 +165,7 @@ namespace GVS
             // Do not present the device to the screen, this is handled in the Loop class.
         }
 
+        internal static GameTime geonGameTime = new GameTime();
         internal static void MainUpdate()
         {
             // Update loading icon.
@@ -166,6 +178,12 @@ namespace GVS
             }
 
             ScreenManager.Update();
+
+            // Update Geon UI.
+            geonGameTime.IsRunningSlowly = false;
+            geonGameTime.ElapsedGameTime = TimeSpan.FromSeconds(Time.unscaledDeltaTime);
+            geonGameTime.TotalGameTime = TimeSpan.FromSeconds(Time.unscaledTime);
+            UserInterface.Active.Update(geonGameTime);
         }
 
         internal static void MainDraw()
