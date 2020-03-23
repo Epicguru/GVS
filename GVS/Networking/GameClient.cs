@@ -12,8 +12,8 @@ namespace GVS.Networking
                 return client.ConnectionStatus;
             }
         }
-        public Action<NetIncomingMessage> OnConnected;
-        public Action<NetIncomingMessage> OnDisconnected;
+        public event Action<NetIncomingMessage> OnConnected;
+        public event Action<NetIncomingMessage> OnDisconnected;
 
         private NetClient client;
 
@@ -51,11 +51,12 @@ namespace GVS.Networking
             return config;
         }
 
-        public bool Connect(string ip, int port)
+        public bool Connect(string ip, int port, out string errorMsg, string password = null)
         {
             if(ConnectionStatus != NetConnectionStatus.Disconnected)
             {
                 Error($"Cannot connect now, wrong state: {ConnectionStatus}, expected Disconnected.");
+                errorMsg = "Already connected or connecting.";
                 return false;
             }
 
@@ -64,19 +65,27 @@ namespace GVS.Networking
             if(client.Status == NetPeerStatus.NotRunning)
                 client.Start();
 
-            client.Connect(ip, port, CreateHailMessage());
-
-            return true;
+            try
+            {
+                client.Connect(ip, port, CreateHailMessage(password));
+                errorMsg = null;
+                return true;
+            }
+            catch(Exception e)
+            {
+                errorMsg = e.Message;
+                return false;
+            }
         }
 
-        private NetOutgoingMessage CreateHailMessage()
+        private NetOutgoingMessage CreateHailMessage(string password = null)
         {
             NetOutgoingMessage msg = client.CreateMessage(64);
             /*
              * 0. Server password (or empty string)
              * 1. Player name.
              */
-            msg.Write(string.Empty);
+            msg.Write(password == null ? string.Empty : password.Trim());
             msg.Write($"James #{Rand.Range(0, 1000)}");
 
             return msg;

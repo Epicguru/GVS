@@ -1,4 +1,8 @@
-﻿using GVS.Sprites;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
+using GVS.Sprites;
+using Lidgren.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -7,6 +11,87 @@ namespace GVS.World
     public abstract class Tile
     {
         public const bool DEBUG_MODE = true; // TODO remove-me for global mode, or use conditional compilation.
+
+        #region Static stuff
+
+        private static List<ConstructorInfo> tileCreators = new List<ConstructorInfo>();
+        private static List<Type> registeredTypes = new List<Type>();
+        private static object[] noArgs = new object[0];
+
+        public static ushort Register<T>() where T : Tile
+        {
+            return Register(typeof(T));
+        }
+
+        public static ushort Register(Type t)
+        {
+            if(t == null)
+            {
+                Debug.Error("Cannot register null tile type.");
+                return 0;
+            }
+            string name = t.FullName;
+            if (!typeof(Tile).IsAssignableFrom(t))
+            {
+                Debug.Error($"Type {name} does not inherit from Tile, so you can't register it as a tile!");
+                return 0;
+            }
+            if (registeredTypes.Contains(t))
+            {
+                Debug.Error($"{name} is already registered!");
+                return 0;
+            }
+
+            // Look for zero arg public constructor.
+            var creator = t.GetConstructor(new Type[] { });
+            if (creator == null)
+            {
+                Debug.Error($"Tile {name} does not have a zero-argument public constructor. It needs one to be able to load and save correctly.");
+                return 0;
+            }
+
+            ushort id = (ushort)(registeredTypes.Count + 1);
+
+            registeredTypes.Add(t);
+            tileCreators.Add(creator);
+
+            return id;
+        }
+
+        public static Type GetRegisteredType(ushort id)
+        {
+            if (id == 0)
+                return null;
+
+            int index = id - 1;
+            if (registeredTypes.Count == 0 || id >= registeredTypes.Count)
+            {
+                Debug.Warn($"Failed to get type of tile for ID {id}: ID out of bounds. Have all tiles been registered yet?");
+                return null;
+            }
+
+            return registeredTypes[index];
+        }
+
+        public static Tile CreateInstance(ushort id)
+        {
+            if (id == 0)
+                return null;
+
+            int index = id - 1;
+            if(registeredTypes.Count == 0 || id >= registeredTypes.Count)
+            {
+                Debug.Warn($"Failed to create tile instance for ID {id}: ID out of bounds. Have all tiles been registered yet?");
+                return null;
+            }
+
+            Tile instance = tileCreators[index].Invoke(noArgs) as Tile;
+            instance.ID = id;
+
+            return instance;
+        }
+
+        #endregion
 
         public static Color ShadowColor = Color.Black.AlphaShift(0.5f);
 
@@ -47,6 +132,7 @@ namespace GVS.World
         /// would be just the bottom face of the tile. Used to draw components and entities at the correct height.
         /// </summary>
         public float Height { get; protected set; } = 1f;
+        public ushort ID { get; private set; }
 
         public Point3D Position { get; internal set; }
         public IsoMap Map { get; internal set; }
@@ -232,6 +318,32 @@ namespace GVS.World
             components[index] = null;
 
             return true;
+        }
+
+        /// <summary>
+        /// Called when the tile needs to be send over the network to another player.
+        /// Will only be called on the server.
+        /// You should only write data that actually needs to be synchronized. For example, it is not
+        /// necessary to send the name of the tile if the name never changes or has no gameplay importance.
+        /// Default implementation writes nothing.
+        /// </summary>
+        /// <param name="msg">The message to write data to.</param>
+        /// <param name="forSpawn">If <see langword="true"/>, then all required data should be written, since the receiving client knows nothing about this tile. If <see langword="false"/>, then only data that might have changed since spawned needs to be sent.</param>
+        public virtual void WriteData(NetOutgoingMessage msg, bool forSpawn)
+        {
+
+        }
+
+        /// <summary>
+        /// Called when the tile has been send from the server to this client.
+        /// Here the data needs to be read and immediately applied.
+        /// Default implementation reads nothing.
+        /// </summary>
+        /// <param name="msg">The message to read data from.</param>
+        /// <param name="forSpawn">If <see langword="true"/>, then all required data should be read, since this client knows nothing about this tile. If <see langword="false"/>, then only data that might have changed since spawned needs to be read.</param>
+        public virtual void ReadData(NetIncomingMessage msg, bool forSpawn)
+        {
+
         }
 
         public override string ToString()

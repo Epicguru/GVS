@@ -26,7 +26,8 @@ namespace GVS.World
 
         public float SingleTileDepth { get; private set; }
 
-        private readonly Tile[,,] tiles; // TODO convert to 1D array, for speed.
+        private readonly Tile[] tiles;
+        private readonly int tilesPerHeightLayer;
 
         public IsoMap(int width, int depth, int height)
         {
@@ -34,6 +35,7 @@ namespace GVS.World
             this.Depth = depth;
             this.Height = height;
             this.SingleTileDepth = 1f / (width * height * depth - 1);
+            this.tilesPerHeightLayer = width * depth;
 
             if (width <= 0)
                 throw new ArgumentOutOfRangeException(nameof(width), "Must be greater than zero!");
@@ -42,9 +44,28 @@ namespace GVS.World
             if (height <= 0)
                 throw new ArgumentOutOfRangeException(nameof(height), "Must be greater than zero!");
 
-            tiles = new Tile[width, depth, height];
+            tiles = new Tile[width * depth * height];
 
             Debug.Log($"Created new IsoMap, {width}x{depth}x{height} for total {width * depth * height} tiles.");
+        }
+
+        private int GetIndex(int x, int y, int z)
+        {
+            return x + y * Width + z * tilesPerHeightLayer;
+        }
+
+        private Point3D GetCoordsFromIndex(int index)
+        {
+            // i = x + y*w + z*tph
+            // z = index / tph
+            // 
+
+            int z = index / tilesPerHeightLayer;
+            int remainder = index - z * tilesPerHeightLayer;
+            int y = remainder / Width;
+            int x = remainder % Width;
+
+            return new Point3D(x, y, z);
         }
 
         public Point GetTileDrawPosition(Point3D mapCoords)
@@ -154,7 +175,7 @@ namespace GVS.World
 
         public Tile GetTile(int x, int y, int z)
         {
-            return IsPointInRange(x, y, z) ? tiles[x, y, z] : null;
+            return IsPointInRange(x, y, z) ? tiles[GetIndex(x, y, z)] : null;
         }
 
         public Tile GetTile(Point3D point)
@@ -177,7 +198,8 @@ namespace GVS.World
             if(IsPointInRange(x, y, z))
             {
                 // Get the current tile at that position and send message if not null and enabled.
-                Tile current = tiles[x, y, z];
+                int index = GetIndex(x, y, z);
+                Tile current = tiles[index];
                 if(current != null)
                 {
                     current.UponRemoved(this);
@@ -185,7 +207,7 @@ namespace GVS.World
                     current.Position = Point3D.Zero;
                 }
 
-                tiles[x, y, z] = tile;
+                tiles[index] = tile;
                 if(tile != null)
                 {
                     // Set position and map reference.
@@ -205,6 +227,32 @@ namespace GVS.World
             }
         }
 
+        internal void SetTileInternal(int x, int y, int z, Tile tile)
+        {
+            // Set position and map reference.
+            tile.Position = new Point3D(x, y, z);
+            tile.Map = this;
+
+            tiles[GetIndex(x, y, z)] = tile;
+        }
+
+        internal void SetTileInternal(int index, Tile tile)
+        {
+            // Set position and map reference.
+            tile.Position = GetCoordsFromIndex(index);
+            tile.Map = this;
+
+            tiles[index] = tile;
+        }
+
+        internal void SendPlaceMessageToAll()
+        {
+            foreach (Tile tile in tiles)
+            {
+                tile?.UponPlaced(this);
+            }
+        }
+
         public void Draw(SpriteBatch spr)
         {
             var bounds = GetDrawBounds();
@@ -216,7 +264,7 @@ namespace GVS.World
                 {
                     for (int y = bounds.sy; y <= bounds.ey; y++)
                     {
-                        Tile tile = tiles[x, y, z];
+                        Tile tile = tiles[x + y * Width + z * tilesPerHeightLayer]; // Could use the GetIndex() method, but I don't know if it would get inlined.
                         if (tile == null)
                             continue;
 

@@ -97,9 +97,9 @@ namespace GVS.Screens
                 return null;
         }
 
-        public GameScreen GetScreen<T>() where T : GameScreen
+        public T GetScreen<T>() where T : GameScreen
         {
-            return GetScreen(typeof(T));
+            return GetScreen(typeof(T)) as T;
         }
 
         public GameScreen GetScreen(Type screenType)

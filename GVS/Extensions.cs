@@ -1,5 +1,7 @@
 ﻿using GeonBit.UI;
 using GeonBit.UI.Entities;
+using GVS.World;
+using Lidgren.Network;
 using Microsoft.Xna.Framework;
 
 namespace GVS
@@ -84,11 +86,6 @@ namespace GVS
             float cw = e.Size.X;
             float ch = e.Size.Y;
 
-            UserInterface.Active.Draw(Main.SpriteBatch);
-
-            //var d = e.Parent.CalcDestRect();
-            //var destA = e.CalcDestRect();
-            //var dest = e.CalcDestRect();
             var topParent = e.GetTopParent();
             bool putInRoot = false;
             if(topParent != UserInterface.Active.Root)
@@ -123,6 +120,26 @@ namespace GVS
             label.WrapWords = false;
             float y = label.Size.Y;
             label.Size = new Vector2(label.GetActualDestRect().Width + 4, y);
+        }
+
+        #endregion
+
+        #region Networking
+
+        public static void Write(this NetOutgoingMessage msg, Point3D point)
+        {
+            msg.Write(point.X);
+            msg.Write(point.Y);
+            msg.Write(point.Z);
+        }
+
+        public static Point3D ReadPoint3D(this NetIncomingMessage msg)
+        {
+            int x = msg.ReadInt32();
+            int y = msg.ReadInt32();
+            int z = msg.ReadInt32();
+
+            return new Point3D(x, y, z);
         }
 
         #endregion

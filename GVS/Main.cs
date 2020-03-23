@@ -11,6 +11,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using GVS.World.Tiles;
 
 namespace GVS
 {
@@ -111,6 +112,12 @@ namespace GVS
             ScreenManager.Register(new PlayScreen());
             ScreenManager.Register(new MainMenuScreen());
             ScreenManager.Register(new ConnectScreen());
+
+            // Register the tiles.
+            Tile.Register<GrassTile>();
+            Tile.Register<SandTile>();
+            Tile.Register<StoneTile>();
+            Tile.Register<WaterTile>();
 
             ScreenManager.Init(ScreenManager.GetScreen<SplashScreen>());
 

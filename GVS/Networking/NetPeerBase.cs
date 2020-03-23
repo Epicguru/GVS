@@ -14,18 +14,34 @@ namespace GVS.Networking
         /// </summary>
         public NetPeerConfiguration Config { get; private set; }
 
-        public Action<NetConnection, NetConnectionStatus, NetIncomingMessage> OnStatusChange;
+        public event Action<NetConnection, NetConnectionStatus, NetIncomingMessage> OnStatusChange;
 
         protected NetPeer peer;
         protected string tag;
+
+        private Action<byte, NetIncomingMessage>[] handlers;
         private Dictionary<NetIncomingMessageType, Action<NetIncomingMessage>> baseHandlers;
 
         protected NetPeerBase(NetPeerConfiguration config)
         {
             this.Config = config;
             this.baseHandlers = new Dictionary<NetIncomingMessageType, Action<NetIncomingMessage>>();
+            handlers = new Action<byte, NetIncomingMessage>[byte.MaxValue + 1];
 
             // Add some default handlers
+            SetBaseHandler(NetIncomingMessageType.Data, (msg) =>
+            {
+                byte id = msg.ReadByte();
+                var handler = handlers[id];
+                if(handler == null)
+                {
+                    Warn($"Received data message of ID {id}, but not handler exists to process it!");
+                }
+                else
+                {
+                    handler.Invoke(id, msg);
+                }
+            });
             SetBaseHandler(NetIncomingMessageType.DebugMessage, (msg) =>
             {
                 Log(msg.ReadString());
@@ -45,6 +61,24 @@ namespace GVS.Networking
                     Trace($"Status: {msg.SenderEndPoint}, {status}");
                 OnStatusChange?.Invoke(msg.SenderConnection, status, msg);
             });
+        }
+
+        public void SetHandler(byte id, Action<byte, NetIncomingMessage> action)
+        {
+            if (action == null)
+            {
+                Debug.Error($"Cannot set null handler for id {id}.");
+                return;
+            }
+
+            var current = handlers[id];
+            if(current != null)
+            {
+                Debug.Error($"There is already a handler for id {id}! Replacing is currently not allowed. (may be in future API)");
+                return;
+            }
+
+            handlers[id] = action;
         }
 
         public void SetBaseHandler(NetIncomingMessageType type, Action<NetIncomingMessage> action)
@@ -105,6 +139,7 @@ namespace GVS.Networking
                 baseHandlers.Clear();
                 baseHandlers = null;
             }
+            handlers = null;
         }
     }
 }

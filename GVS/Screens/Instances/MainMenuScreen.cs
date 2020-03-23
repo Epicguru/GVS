@@ -52,7 +52,10 @@ namespace GVS.Screens.Instances
         private void OnHostClicked(Entity e)
         {
             if (!Manager.IsTransitioning)
+            {
+                Manager.GetScreen<PlayScreen>().HostMode = true;
                 Manager.ChangeScreen<PlayScreen>();
+            }
         }
 
         private void OnConnectClicked(Entity e)
