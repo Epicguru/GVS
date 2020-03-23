@@ -51,15 +51,24 @@
     <Compile Include="Debug.cs" />
     <Compile Include="Entities\Entity.cs" />
     <Compile Include="Entities\Instances\DevTroop.cs" />
+    <Compile Include="Networking\Players\BotPlayer.cs" />
+    <Compile Include="Networking\Players\HumanPlayer.cs" />
+    <Compile Include="Networking\Players\Player.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="IO\GameIO.cs" />
     <Compile Include="Loop.cs" />
     <Compile Include="Main.cs" />
+    <Compile Include="Networking\GameClient.cs" />
+    <Compile Include="Networking\GameServer.cs" />
+    <Compile Include="Networking\NetMessageType.cs" />
+    <Compile Include="Networking\NetPeerBase.cs" />
+    <Compile Include="Networking\Net.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Rand.cs" />
     <Compile Include="Screen.cs" />
     <Compile Include="Screens\GameScreen.cs" />
+    <Compile Include="Screens\Instances\ConnectScreen.cs" />
     <Compile Include="Screens\Instances\MainMenuScreen.cs" />
     <Compile Include="Screens\Instances\PlayScreen.cs" />
     <Compile Include="Screens\Instances\SplashScreen.cs" />
@@ -88,8 +97,14 @@
     <Reference Include="GeonBit.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\GeonBit.UI.3.4.0.1\lib\geonbitui\GeonBit.UI.dll</HintPath>
     </Reference>
+    <Reference Include="Lidgren.Network, Version=2012.1.7.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Lidgren.Network.1.0.2\lib\net451\Lidgren.Network.dll</HintPath>
+    </Reference>
     <Reference Include="MonoGame.Framework">
       <HintPath>$(MonoGameInstallDirectory)\MonoGame\v3.0\Assemblies\Windows\MonoGame.Framework.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="SharpNoise, Version=0.12.1.1, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\SharpNoise.0.12.1.1\lib\netstandard2.0\SharpNoise.dll</HintPath>

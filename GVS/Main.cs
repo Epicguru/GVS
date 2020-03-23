@@ -1,4 +1,6 @@
-﻿using GVS.Screens;
+﻿using GeonBit.UI;
+using GVS.Networking;
+using GVS.Screens;
 using GVS.Screens.Instances;
 using GVS.Sprites;
 using GVS.World;
@@ -9,7 +11,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using GeonBit.UI;
 
 namespace GVS
 {
@@ -32,6 +33,9 @@ namespace GVS
         public static Sprite WaterTile, SandTile, HouseTile;
         public static Sprite TileShadowTopLeft, TileShadowTopRight, TileShadowBottomLeft, TileShadowBottomRight;
 
+        public static GameClient Client { get; internal set; }
+        public static GameServer Server { get; internal set; }
+
         public static AnimatedSprite LoadingIconSprite { get; private set; }
 
         public static ScreenManager ScreenManager { get; private set; }
@@ -47,6 +51,20 @@ namespace GVS
 
         public static string ContentDirectory { get; private set; }
         public static Rectangle ClientBounds { get; private set; }
+        public static float UIScale
+        {
+            get { return UserInterface.Active?.GlobalScale ?? 1f; }
+            set
+            {
+                if (value > 0f && value != UIScale)
+                {
+                    if(UserInterface.Active != null)
+                    {
+                        UserInterface.Active.GlobalScale = value;
+                    }
+                }
+            }
+        }
 
         private static Main main;
         private static float loadIconTimer;
@@ -92,6 +110,7 @@ namespace GVS
             ScreenManager.Register(new SplashScreen());
             ScreenManager.Register(new PlayScreen());
             ScreenManager.Register(new MainMenuScreen());
+            ScreenManager.Register(new ConnectScreen());
 
             ScreenManager.Init(ScreenManager.GetScreen<SplashScreen>());
 

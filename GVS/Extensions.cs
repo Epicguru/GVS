@@ -1,4 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+﻿using GeonBit.UI;
+using GeonBit.UI.Entities;
+using Microsoft.Xna.Framework;
 
 namespace GVS
 {
@@ -54,5 +56,75 @@ namespace GVS
             c.A = byteA;
             return c;
         }
+
+        #region UI
+
+        public static Entity GetTopParent(this Entity e)
+        {
+            Entity current = e;
+            while(current.Parent != null)
+            {
+                current = current.Parent;
+            }
+
+            return current;
+        }
+
+        public static void ExtendToParentBounds(this Entity e, bool width, bool height)
+        {
+            if (!width && !height)
+                return;
+
+            if(e.Parent == null)
+            {
+                Debug.Warn($"Cannot extend {e} to parent bounds because it has no parent! Make sure to assign parent first!");
+                return;
+            }
+
+            float cw = e.Size.X;
+            float ch = e.Size.Y;
+
+            UserInterface.Active.Draw(Main.SpriteBatch);
+
+            //var d = e.Parent.CalcDestRect();
+            //var destA = e.CalcDestRect();
+            //var dest = e.CalcDestRect();
+            var topParent = e.GetTopParent();
+            bool putInRoot = false;
+            if(topParent != UserInterface.Active.Root)
+            {
+                UserInterface.Active.AddEntity(topParent);
+                putInRoot = true;
+            }
+
+            e.CalcDestRect();
+            var offset = e.GetRelativeOffset();
+            if (width)
+            {
+                cw = e.Parent.Size.X - offset.X - e.Parent.Padding.X;
+            }
+            if (height)
+            {
+                ch = e.Parent.Size.Y - offset.Y - e.Parent.Padding.Y;
+            }
+
+            e.Size = new Vector2(cw, ch);
+
+            if (putInRoot)
+            {
+                // Remove from root.
+                UserInterface.Active.RemoveEntity(topParent);
+            }
+        }
+
+        public static void MatchTextWidth(this Label label)
+        {
+            label.CalcTextActualRectWithWrap();
+            label.WrapWords = false;
+            float y = label.Size.Y;
+            label.Size = new Vector2(label.GetActualDestRect().Width + 4, y);
+        }
+
+        #endregion
     }
 }

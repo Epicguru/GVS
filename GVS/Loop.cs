@@ -1,11 +1,11 @@
+using GeonBit.UI;
+using GVS.Entities;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Diagnostics;
 using System.Threading;
-using GeonBit.UI;
-using GVS.Entities;
-using GVS.World;
+using GVS.Screens.Instances;
 
 namespace GVS
 {
@@ -300,17 +300,14 @@ namespace GVS
 
             Debug.Text($"FPS: {Framerate:F0} (Target: {(TargetFramerate == 0 ? "uncapped" : TargetFramerate.ToString("F0"))}, VSync: {VSyncMode})");
             Debug.Text($"Time Scale: {Time.TimeScale}");
-            Debug.Text($"Screen Res: ({Screen.Width}x{Screen.Height})");
+            //Debug.Text($"Screen Res: ({Screen.Width}x{Screen.Height})");
             Debug.Text($"Used memory: {Main.GameProcess.PrivateMemorySize64 / 1024 / 1024}MB.");
             Debug.Text($"Texture Swap Count: {Loop.Statistics.DrawMetrics.TextureCount}");
             Debug.Text($"Draw Calls: {Loop.Statistics.DrawMetrics.DrawCount}");
             Debug.Text($"Sprites Drawn: {Loop.Statistics.DrawMetrics.SpriteCount}");
             Debug.Text($"Total Entities: {Entity.SpawnedCount}.");
-
-            Tile selectedTile = Input.TileUnderMouse;
-            Debug.Text($"Tile under mouse: {(selectedTile == null ? "null" : selectedTile.ToString())}");
-            if (selectedTile != null)
-                selectedTile.TemporarySpriteTint = Color.Orange;
+            Debug.Text($"Net - Client: {Main.Client?.ConnectionStatus.ToString() ?? "null"}, Server: {Main.Server?.Status.ToString() ?? "null"}");
+            Debug.Text(Input.MousePos.ToString());
 
             // Update currently active screen.
             Main.MainUpdate();
@@ -337,7 +334,6 @@ namespace GVS
 
             InUIDraw = true;
 
-
             spr.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, null);
 
             // Draw the UI.
@@ -348,6 +344,7 @@ namespace GVS
 
             // Draw Geon UI (has to be outside of spritebatch region.)
             UserInterface.Active.Draw(spr);
+
             InUIDraw = false;
         }
 

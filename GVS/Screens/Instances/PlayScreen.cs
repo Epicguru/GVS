@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
-using System.Threading;
+using GVS.Networking;
 
 namespace GVS.Screens.Instances
 {
@@ -27,10 +27,21 @@ namespace GVS.Screens.Instances
             // Generate isometric map.
             LoadingScreenText = "Generating map...";
             GenerateMap();
+
+            LoadingScreenText = "Creating server...";
+            Main.Server = new GameServer(7777, 8);
+            Main.Server.Start();
+
+            LoadingScreenText = "Connecting local client...";
+            Main.Client = new GameClient();
+            Main.Client.Connect("localhost", 7777);
         }
 
         public override void Unload()
         {
+            Main.Server.Dispose();
+            Main.Server = null;
+
             var map = Main.Map;
             Main.Map = null;
             map.Dispose();
@@ -58,6 +69,11 @@ namespace GVS.Screens.Instances
 
             // Debug update camera movement. Allows to move using WASD and zoom using E and Q.
             UpdateCameraMove();
+
+            // Update client and server if they are not null.
+            // TODO quit game if client disconnects.
+            Main.Server?.Update();
+            Main.Client?.Update();
 
             Main.Map.Update();
             Entity.UpdateAll();

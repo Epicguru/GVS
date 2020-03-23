@@ -9,8 +9,8 @@ namespace GVS.Screens.Instances
         private Panel mainPanel;
 
         private Button hostButton;
+        private Button connectButton;
         private Button quitButton;
-        private TextInput portInput;
 
         public MainMenuScreen() : base("Main Menu")
         {
@@ -23,18 +23,15 @@ namespace GVS.Screens.Instances
                 return;
 
             mainPanel = new Panel(Vector2.Zero);
-            mainPanel.Size = new Vector2(200f, 400f);
+            mainPanel.Size = new Vector2(300f, 500f);
 
             hostButton = new Button("Host", ButtonSkin.Fancy);
-            hostButton.OnClick += OnPlayClicked;
+            hostButton.OnClick += OnHostClicked;
             mainPanel.AddChild(hostButton);
 
-            portInput = new TextInput(false);
-            portInput.PlaceholderText = "Type port...";
-            portInput.ToolTipText = "Port number to host on or connect to.";
-            portInput.Validators.Add(new GeonBit.UI.Entities.TextValidators.TextValidatorNumbersOnly(false));
-            portInput.TextParagraph.Text = "7777";
-            mainPanel.AddChild(portInput);
+            connectButton = new Button("Connect", ButtonSkin.Fancy);
+            connectButton.OnClick += OnConnectClicked;
+            mainPanel.AddChild(connectButton);
 
             quitButton = new Button("Exit");
             quitButton.Anchor = Anchor.BottomCenter;
@@ -52,10 +49,16 @@ namespace GVS.Screens.Instances
             UserInterface.Active.RemoveEntity(mainPanel);
         }
 
-        private void OnPlayClicked(Entity e)
+        private void OnHostClicked(Entity e)
         {
             if (!Manager.IsTransitioning)
                 Manager.ChangeScreen<PlayScreen>();
+        }
+
+        private void OnConnectClicked(Entity e)
+        {
+            if (!Manager.IsTransitioning)
+                Manager.ChangeScreen<ConnectScreen>();
         }
 
         private void OnExitClicked(Entity e)

@@ -4,7 +4,7 @@
     <Scale>1</Scale>
     <FillColor>FFFFFFFF</FillColor>
     <OutlineColor>FF000000</OutlineColor>
-    <OutlineWidth>2</OutlineWidth>
+    <OutlineWidth>0</OutlineWidth>
     <ForceAlignCenter>false</ForceAlignCenter>
     <FontStyle>Regular</FontStyle>
     <SelectedHighlightColor Null="true" />
