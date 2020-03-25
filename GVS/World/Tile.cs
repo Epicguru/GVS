@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using GVS.Sprites;
+﻿using GVS.Sprites;
 using Lidgren.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace GVS.World
 {
@@ -14,9 +14,18 @@ namespace GVS.World
 
         #region Static stuff
 
-        private static List<ConstructorInfo> tileCreators = new List<ConstructorInfo>();
-        private static List<Type> registeredTypes = new List<Type>();
-        private static object[] noArgs = new object[0];
+        public static int RegisteredCount
+        {
+            get
+            {
+                return all.Count;
+            }
+        }
+
+        private static readonly List<ConstructorInfo> tileCreators = new List<ConstructorInfo>();
+        private static readonly Dictionary<Type, ushort> type2ID = new Dictionary<Type, ushort>();
+        private static readonly List<Type> all = new List<Type>();
+        private static readonly object[] noArgs = new object[0];
 
         public static ushort Register<T>() where T : Tile
         {
@@ -36,7 +45,7 @@ namespace GVS.World
                 Debug.Error($"Type {name} does not inherit from Tile, so you can't register it as a tile!");
                 return 0;
             }
-            if (registeredTypes.Contains(t))
+            if (type2ID.ContainsKey(t))
             {
                 Debug.Error($"{name} is already registered!");
                 return 0;
@@ -50,27 +59,28 @@ namespace GVS.World
                 return 0;
             }
 
-            ushort id = (ushort)(registeredTypes.Count + 1);
+            ushort id = (ushort)(type2ID.Count + 1);
 
-            registeredTypes.Add(t);
+            type2ID.Add(t, id);
             tileCreators.Add(creator);
+            all.Add(t);
 
             return id;
         }
 
-        public static Type GetRegisteredType(ushort id)
+        public static Type GetTileType(ushort id)
         {
             if (id == 0)
                 return null;
 
             int index = id - 1;
-            if (registeredTypes.Count == 0 || id >= registeredTypes.Count)
+            if (all.Count == 0 || index >= all.Count)
             {
                 Debug.Warn($"Failed to get type of tile for ID {id}: ID out of bounds. Have all tiles been registered yet?");
                 return null;
             }
 
-            return registeredTypes[index];
+            return all[index];
         }
 
         public static Tile CreateInstance(ushort id)
@@ -79,22 +89,30 @@ namespace GVS.World
                 return null;
 
             int index = id - 1;
-            if(registeredTypes.Count == 0 || id >= registeredTypes.Count)
+            if(all.Count == 0 || index >= all.Count)
             {
                 Debug.Warn($"Failed to create tile instance for ID {id}: ID out of bounds. Have all tiles been registered yet?");
                 return null;
             }
 
             Tile instance = tileCreators[index].Invoke(noArgs) as Tile;
-            instance.ID = id;
 
             return instance;
+        }
+
+        public static ushort GetID(Type t)
+        {
+            if (t == null)
+                return 0;
+
+            return type2ID.ContainsKey(t) ? type2ID[t] : (ushort)0;
         }
 
         #endregion
 
         public static Color ShadowColor = Color.Black.AlphaShift(0.5f);
 
+        public ushort ID { get; internal set; }
         public string Name
         {
             get
@@ -132,7 +150,6 @@ namespace GVS.World
         /// would be just the bottom face of the tile. Used to draw components and entities at the correct height.
         /// </summary>
         public float Height { get; protected set; } = 1f;
-        public ushort ID { get; private set; }
 
         public Point3D Position { get; internal set; }
         public IsoMap Map { get; internal set; }
@@ -147,6 +164,11 @@ namespace GVS.World
 
         private string name = "No-name";
         private readonly TileComponent[] components = new TileComponent[8];
+
+        protected Tile()
+        {
+            ID = Tile.GetID(GetType());
+        }
 
         public float GetDrawDepth()
         {
@@ -273,11 +295,9 @@ namespace GVS.World
             if (!canAdd)
             {
                 Debug.Error($"Cannot add component {tc} to tile {this} at index {index}!");
-                if (DEBUG_MODE)
-                {
-                    CanAddComponent(tc, index, out int code);
-                    Debug.Error($"Error code: {code}");
-                }
+                CanAddComponent(tc, index, out int code);
+                Debug.Error($"Error code: {code}");
+                
                 return false;
             }
 
@@ -325,25 +345,72 @@ namespace GVS.World
         /// Will only be called on the server.
         /// You should only write data that actually needs to be synchronized. For example, it is not
         /// necessary to send the name of the tile if the name never changes or has no gameplay importance.
-        /// Default implementation writes nothing.
+        /// Default implementation writes the <see cref="BaseSpriteTint"/>, and all components.
         /// </summary>
         /// <param name="msg">The message to write data to.</param>
         /// <param name="forSpawn">If <see langword="true"/>, then all required data should be written, since the receiving client knows nothing about this tile. If <see langword="false"/>, then only data that might have changed since spawned needs to be sent.</param>
-        public virtual void WriteData(NetOutgoingMessage msg, bool forSpawn)
+        public virtual void WriteData(NetBuffer msg, bool forSpawn)
         {
+            // Tint color.
+            msg.Write(this.BaseSpriteTint);
 
+            // Count how many components there are.
+            byte compCount = 0;
+            foreach (var comp in components)
+            {
+                if (comp != null)
+                    compCount++;
+            }
+            msg.Write(compCount);
+
+            // Write component data...
+            for (int i = 0; i < components.Length; i++)
+            {
+                byte index = (byte)i;
+                var comp = components[index];
+                if(comp != null)
+                {
+                    // Write the index of the component, because some gaps may be left in the array.
+                    msg.Write(index);
+
+                    // If this is the first time that it is sent, also send the ID so that it can be spawned.
+                    if (forSpawn)
+                    {
+                        msg.Write(comp.ID);
+                    }
+
+                    comp.WriteData(msg, forSpawn);
+                }
+            }
         }
 
         /// <summary>
         /// Called when the tile has been send from the server to this client.
         /// Here the data needs to be read and immediately applied.
-        /// Default implementation reads nothing.
+        /// Default implementation reads the <see cref="BaseSpriteTint"/>, and all components.
         /// </summary>
         /// <param name="msg">The message to read data from.</param>
         /// <param name="forSpawn">If <see langword="true"/>, then all required data should be read, since this client knows nothing about this tile. If <see langword="false"/>, then only data that might have changed since spawned needs to be read.</param>
-        public virtual void ReadData(NetIncomingMessage msg, bool forSpawn)
+        public virtual void ReadData(NetBuffer msg, bool forSpawn)
         {
+            this.BaseSpriteTint = msg.ReadColor();
 
+            byte compCount = msg.ReadByte();
+            for (int i = 0; i < compCount; i++)
+            {
+                byte index = msg.ReadByte();
+
+                if (forSpawn)
+                {
+                    ushort id = msg.ReadUInt16();
+                    var newComp = TileComponent.CreateInstance(id);
+                    RemoveComponent(index, false);
+                    AddComponent(newComp, index, false);
+                }
+
+                var current = components[index];
+                current.ReadData(msg, forSpawn);
+            }
         }
 
         public override string ToString()

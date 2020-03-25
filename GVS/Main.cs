@@ -10,8 +10,11 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
-using GVS.World.Tiles;
+
+// Allow GVS Tests to access 'internal' methods, fields etc.
+[assembly: InternalsVisibleTo("GVS_Tests")]
 
 namespace GVS
 {
@@ -36,6 +39,20 @@ namespace GVS
 
         public static GameClient Client { get; internal set; }
         public static GameServer Server { get; internal set; }
+        public static bool IsClient
+        {
+            get
+            {
+                return Client != null && Client.ConnectionStatus == Lidgren.Network.NetConnectionStatus.Connected;
+            }
+        }
+        public static bool IsServer
+        {
+            get
+            {
+                return Server != null && Server.Status == Lidgren.Network.NetPeerStatus.Running;
+            }
+        }
 
         public static AnimatedSprite LoadingIconSprite { get; private set; }
 
@@ -113,12 +130,6 @@ namespace GVS
             ScreenManager.Register(new MainMenuScreen());
             ScreenManager.Register(new ConnectScreen());
 
-            // Register the tiles.
-            Tile.Register<GrassTile>();
-            Tile.Register<SandTile>();
-            Tile.Register<StoneTile>();
-            Tile.Register<WaterTile>();
-
             ScreenManager.Init(ScreenManager.GetScreen<SplashScreen>());
 
             // Init debug.
@@ -179,6 +190,7 @@ namespace GVS
 
         protected override void EndRun()
         {
+            ScreenManager.Shutdown();
             Loop.StopAndWait();
             Debug.Shutdown();
             thisProcess.Dispose();

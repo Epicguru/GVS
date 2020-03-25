@@ -12,8 +12,8 @@ namespace GVS.Networking
                 return client.ConnectionStatus;
             }
         }
-        public event Action<NetIncomingMessage> OnConnected;
-        public event Action<NetIncomingMessage> OnDisconnected;
+        public event Action OnConnected;
+        public event Action<string> OnDisconnected;
 
         private NetClient client;
 
@@ -22,7 +22,6 @@ namespace GVS.Networking
             client = new NetClient(base.Config);
             base.peer = client;
             base.tag = "Client";
-
             base.OnStatusChange += (conn, status, msg) =>
             {
                 switch (status)
@@ -33,15 +32,20 @@ namespace GVS.Networking
                         string text = msg.PeekString();
                         Log($"Disconnected. Reason: {text}");
 
-                        OnDisconnected?.Invoke(msg);
+                        OnDisconnected?.Invoke(text);
                         break;
 
                     case NetConnectionStatus.Connected:
                         Log("Connected.");
-                        OnConnected?.Invoke(msg);
+                        OnConnected?.Invoke();
                         break;
                 }
             };
+        }
+
+        public void SendMessage(NetOutgoingMessage msg, NetDeliveryMethod method)
+        {
+            client.SendMessage(msg, method);
         }
 
         private static NetPeerConfiguration MakeConfig()
@@ -93,7 +97,7 @@ namespace GVS.Networking
 
         public void Update()
         {
-            base.ProcessMessages();
+            base.ProcessMessages(out int _);
         }
 
         public void Disconnect()

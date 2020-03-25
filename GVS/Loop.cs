@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Diagnostics;
 using System.Threading;
-using GVS.Screens.Instances;
 
 namespace GVS
 {
@@ -307,7 +306,7 @@ namespace GVS
             Debug.Text($"Sprites Drawn: {Loop.Statistics.DrawMetrics.SpriteCount}");
             Debug.Text($"Total Entities: {Entity.SpawnedCount}.");
             Debug.Text($"Net - Client: {Main.Client?.ConnectionStatus.ToString() ?? "null"}, Server: {Main.Server?.Status.ToString() ?? "null"}");
-            Debug.Text(Input.MousePos.ToString());
+            Debug.Text($"Under mouse: {(Input.TileUnderMouse == null ? "null" : Input.TileUnderMouse.Position.ToString())}");
 
             // Update currently active screen.
             Main.MainUpdate();

@@ -86,6 +86,15 @@ namespace GVS.Screens
             Debug.Trace($"Un-registered GameScreen: {gs}");
         }
 
+        public void Shutdown()
+        {
+            if(CurrentScreen != null)
+            {
+                CurrentScreen.Unload();
+                CurrentScreen.UponHide();
+            }
+        }
+
         public GameScreen GetScreen(string typeName)
         {
             if (typeName == null)
@@ -187,9 +196,6 @@ namespace GVS.Screens
                 loading = toTransitionTo;
                 toTransitionTo = null;
                 hasStartedLoading = false;
-
-                // Will now fade to black.
-                Debug.Trace($"Started screen transition to {loading}");
             }
 
             if(IsTransitioning && !hasStartedLoading && fadeLerp == 1f)
@@ -202,8 +208,6 @@ namespace GVS.Screens
 
                 // Unload the old screens' stuff.
                 CurrentScreen.Unload();
-
-                Debug.Trace($"Unloaded screen {CurrentScreen}.");
 
                 // Load. This will block. Another thread will do the simple rendering in the meantime.
                 Time.ForceNormalTime();
@@ -219,7 +223,7 @@ namespace GVS.Screens
                 loading.IsActive = true;
                 loading.UponShow();
 
-                Debug.Trace($"Loaded screen {CurrentScreen}, showing...");
+                Debug.Trace($"Changed screen to {CurrentScreen}, showing...");
 
                 // Now un-fade.
                 loading = null;

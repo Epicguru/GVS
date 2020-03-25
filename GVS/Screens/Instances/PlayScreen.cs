@@ -1,24 +1,25 @@
 ﻿using GVS.Entities;
 using GVS.Entities.Instances;
+using GVS.Networking;
+using GVS.Reflection;
 using GVS.World;
 using GVS.World.Generation;
 using GVS.World.Tiles;
 using GVS.World.Tiles.Components;
+using Lidgren.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
-using GVS.Networking;
-using Lidgren.Network;
 
 namespace GVS.Screens.Instances
 {
     public class PlayScreen : GameScreen
     {
         public bool HostMode { get; set; } = false;
-        public NetIncomingMessage ConnectMessage { get; set; }
 
         private int receivedChunks;
+        private int expectedChunks;
 
         public PlayScreen() : base("Play Screen")
         {
@@ -26,13 +27,7 @@ namespace GVS.Screens.Instances
 
         public override void Load()
         {
-            // Create an instance of the isometric map.
-            LoadingScreenText = "Creating map...";
-            Main.Map = new IsoMap(100, 100, 3);
-
-            // Generate isometric map.
-            LoadingScreenText = "Generating map...";
-            GenerateMap();
+            LoadGenericMode();
 
             if (HostMode)
             {
@@ -44,13 +39,52 @@ namespace GVS.Screens.Instances
             }
         }
 
+        private void LoadGenericMode()
+        {
+            // Called to load regardless of whether it's host mode or remote mode.
+
+            // Load tiles, tileComps, entities, if they are not already loaded.
+            if(Tile.RegisteredCount == 0)
+            {
+                LoadingScreenText = "Loading object definitions...";
+                new ClassExtractor().ScanAll(
+                    t =>
+                    {
+                        // Tiles.
+                        Tile.Register(t);
+                    },
+                    t =>
+                    {
+                        // Tile components.
+                        TileComponent.Register(t);
+                    });
+            }
+        }
+
         private void LoadHostMode()
         {
-            // Load by creating an internal server and connecting local client.
+            // Create an instance of the isometric map.
+            LoadingScreenText = "Creating map...";
+            Main.Map = new IsoMap(100, 100, 3);
 
+            // Generate isometric map.
+            LoadingScreenText = "Generating map...";
+            GenerateMap();
+
+            // Load by creating an internal server and connecting local client.
             LoadingScreenText = "Creating server...";
             Main.Server = new GameServer(7777, 8);
-            Main.Server.Start();
+            try
+            {
+                Main.Server.Start();
+            }
+            catch(Exception e)
+            {
+                Debug.Error("Failed to open internal server! Is the port occupied?");
+                Debug.Error("Exception: ", e);
+                Manager.ChangeScreen<MainMenuScreen>();
+                return;
+            }
 
             LoadingScreenText = "Connecting local client...";
             Main.Client = new GameClient();
@@ -59,6 +93,7 @@ namespace GVS.Screens.Instances
             {
                 Debug.Error("CRITICAL SHIT YO! Failed to connect to local host! How does that even happen?!?!");
                 Debug.Error(error);
+                Manager.ChangeScreen<MainMenuScreen>();
             }
         }
 
@@ -66,21 +101,18 @@ namespace GVS.Screens.Instances
         {
             // Load by receiving data from remote server and loading that map.
             // Assumes that the client is already connected (from ConnectScreen).
-            LoadingScreenText = "Reading server data...";
-            Debug.Assert(ConnectMessage != null);
             receivedChunks = 0;
+            expectedChunks = 0;
 
             // Register handler.
-            Main.Client.SetHandler(NetMessageType.WorldChunkData, this.HandleChunkData);
+            Main.Client.SetHandler(NetMessageType.Data_BasicServerInfo, this.HandleBasicServerInfo);
+            Main.Client.SetHandler(NetMessageType.Data_WorldChunk, this.HandleWorldData);
 
-            Point3D mapSize = ConnectMessage.ReadPoint3D();
-            int expectedChunks = ConnectMessage.ReadInt32();
-
-            Debug.Trace($"Server's map is {mapSize}");
-            Debug.Trace($"Expecting {expectedChunks} chunks of world data.");
-
-            // Create map instance.
-            Main.Map = new IsoMap(mapSize.X, mapSize.Y, mapSize.Z);
+            // Request basic world info.
+            LoadingScreenText = "Waiting for server info...";
+            NetOutgoingMessage basicReq = Main.Client.CreateMessage(NetMessageType.Req_BasicServerInfo);
+            Main.Client.SendMessage(basicReq, NetDeliveryMethod.ReliableUnordered);
+            Debug.Trace("Requested basic server info, wait for response...");
 
             const int SLEEP = 10;
             const int MAX_TIME = 20000;
@@ -88,14 +120,56 @@ namespace GVS.Screens.Instances
 
             for (int i = 0; i < MAX_ITERATIONS; i++)
             {
+                // Make sure we receive messages.
                 Main.Client.Update();
-                float percentage = 100f * ((float) receivedChunks / expectedChunks);
-                LoadingScreenText = $"Reading world data: {percentage:F0}%";
+
+                // If this is not zero then it means we have already got world basic info.
+                if(expectedChunks != 0)
+                {
+                    float percentage = 100f * ((float)receivedChunks / expectedChunks);
+                    LoadingScreenText = $"Downloading world data: {percentage:F0}%";
+                }
+                
                 System.Threading.Thread.Sleep(SLEEP);
+
+                if(receivedChunks >= expectedChunks && expectedChunks != 0)
+                {
+                    // Neat, all downloaded.
+                    Debug.Trace($"Finished downloading {receivedChunks}/{expectedChunks} chunks of data.");
+                    Main.Map.SendPlaceMessageToAll();
+                    break;
+                }
+            }
+
+            // Make sure that we got all chunks.
+            if(receivedChunks < expectedChunks)
+            {
+                Debug.Error($"Failed to download all world chunk data in time ({MAX_TIME} ms). Downloaded {receivedChunks} of {expectedChunks}.");
+                Manager.ChangeScreen<MainMenuScreen>();
+                GeonBit.UI.Utils.MessageBox.ShowMsgBox("Download error", $"Failed to download all data chunks time ({receivedChunks}/{expectedChunks}). Connection is too slow or the server closed.");
             }
         }
 
-        private void HandleChunkData(byte id, NetIncomingMessage msg)
+        private void HandleBasicServerInfo(byte id, NetIncomingMessage msg)
+        {
+            // Read data...
+            Point3D mapSize = msg.ReadPoint3D();
+            expectedChunks = msg.ReadInt32();
+
+            Debug.Trace("Got basic info from server!");
+            Debug.Trace($"Server's map is {mapSize}");
+            Debug.Trace($"Expecting {expectedChunks} chunks of world data.");
+
+            // Create map instance.
+            Main.Map = new IsoMap(mapSize.X, mapSize.Y, mapSize.Z);
+
+            // Now request all of the world data!
+            LoadingScreenText = "Requesting map data...";
+            NetOutgoingMessage toSend = Main.Client.CreateMessage(NetMessageType.Req_WorldChunks);
+            Main.Client.SendMessage(toSend, NetDeliveryMethod.ReliableUnordered);
+        }
+
+        private void HandleWorldData(byte id, NetIncomingMessage msg)
         {
             receivedChunks++;
             int length = msg.ReadInt32();
@@ -103,18 +177,28 @@ namespace GVS.Screens.Instances
 
             for (int i = 0; i < length; i++)
             {
+                // Read tile ID. 0 means air.
                 ushort tileID = msg.ReadUInt16();
-                Tile newTile = Tile.CreateInstance(tileID);
-                Main.Map.SetTileInternal(startIndex + i, newTile);
 
+                if (tileID == 0) // If air then there is no more data to read.
+                    continue;
+
+                int finalIndex = startIndex + i;
+                Tile newTile = Tile.CreateInstance(tileID);
+                Main.Map.SetTileInternal(finalIndex, newTile);
+
+                // Deserialize tile data. Includes tile components.
                 newTile.ReadData(msg, true);
             }
-;        }
+        }
 
         public override void Unload()
         {
-            Main.Server.Dispose();
+            Main.Server?.Dispose();
             Main.Server = null;
+
+            Main.Client?.Dispose();
+            Main.Client = null;
 
             var map = Main.Map;
             Main.Map = null;
@@ -219,8 +303,8 @@ namespace GVS.Screens.Instances
         private void GenerateMap()
         {
             var map = Main.Map;
-            Random r = new Random(400);
-            Noise n = new Noise(400);
+            Random r = new Random(50);
+            Noise n = new Noise(r.Next(0, 10000));
 
             LoadingScreenText = "Generating map... Placing tiles...";
 
@@ -308,6 +392,5 @@ namespace GVS.Screens.Instances
 
             map.SendPlaceMessageToAll();
         }
-
     }
 }

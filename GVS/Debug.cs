@@ -306,8 +306,6 @@ namespace GVS
                 spr.DrawString(Main.MediumFont, text, new Vector2(x, y), Color.Black);
                 y += (int)size.Y;
             }
-
-            
         }
 
         private static readonly StringBuilder str = new StringBuilder();

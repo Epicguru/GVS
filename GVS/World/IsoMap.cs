@@ -1,4 +1,6 @@
 ﻿
+using GVS.Networking;
+using Lidgren.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
@@ -8,6 +10,7 @@ namespace GVS.World
     public class IsoMap : IDisposable
     {
         public const int TILE_SIZE = 256;
+        public const int TARGET_TILES_PER_MESSAGE = 2000;
 
         /// <summary>
         /// The size of this map in tiles, on the X axis. (Towards screen bottom right)
@@ -49,26 +52,21 @@ namespace GVS.World
             Debug.Log($"Created new IsoMap, {width}x{depth}x{height} for total {width * depth * height} tiles.");
         }
 
-        private int GetIndex(int x, int y, int z)
+        public int GetIndex(int x, int y, int z)
         {
             return x + y * Width + z * tilesPerHeightLayer;
         }
 
-        private Point3D GetCoordsFromIndex(int index)
+        internal Point3D GetCoordsFromIndex(int index)
         {
-            // i = x + y*w + z*tph
-            // z = index / tph
-            // 
-
-            int z = index / tilesPerHeightLayer;
-            int remainder = index - z * tilesPerHeightLayer;
-            int y = remainder / Width;
-            int x = remainder % Width;
+            int x = index % Width;
+            int y = (index / Width) % Depth;
+            int z = index / (Width * Depth);
 
             return new Point3D(x, y, z);
         }
 
-        public Point GetTileDrawPosition(Point3D mapCoords)
+        internal Point GetTileDrawPosition(Point3D mapCoords)
         {
             const int HALF_TILE = TILE_SIZE / 2;
             const int QUARTER_TILE = TILE_SIZE / 4;
@@ -253,6 +251,45 @@ namespace GVS.World
             }
         }
 
+        internal int GetNumberOfNetChunks()
+        {
+            int chunks = (int)Math.Ceiling((double)tiles.Length / TARGET_TILES_PER_MESSAGE);
+
+            return chunks;
+        }
+
+        internal NetOutgoingMessage NetSerializeAllTiles(NetPeerBase peer, int chunkIndex)
+        {
+            // Determine starting index of this chunk.
+            int startIndex = chunkIndex * TARGET_TILES_PER_MESSAGE;
+
+            // Determine actual length of this chunk.
+            int length = MathHelper.Min(tiles.Length - startIndex, TARGET_TILES_PER_MESSAGE);
+
+            // Create new message.
+            var msg = peer.CreateMessage(NetMessageType.Data_WorldChunk);
+            msg.Write(length);
+            msg.Write(startIndex);
+
+            // Write all tile data.
+            for (int j = 0; j < length; j++)
+            {
+                var tile = tiles[startIndex + j];
+                if (tile == null)
+                {
+                    msg.Write((ushort)0);
+                }
+                else
+                {
+                    msg.Write(tile.ID);
+
+                    tile.WriteData(msg, true);
+                }
+            }
+
+            return msg;
+        }
+
         public void Draw(SpriteBatch spr)
         {
             var bounds = GetDrawBounds();
@@ -264,7 +301,7 @@ namespace GVS.World
                 {
                     for (int y = bounds.sy; y <= bounds.ey; y++)
                     {
-                        Tile tile = tiles[x + y * Width + z * tilesPerHeightLayer]; // Could use the GetIndex() method, but I don't know if it would get inlined.
+                        Tile tile = tiles[GetIndex(x, y, z)]; // Could use the GetIndex() method, but I don't know if it would get inlined.
                         if (tile == null)
                             continue;
 
@@ -350,7 +387,7 @@ namespace GVS.World
 
         public void Dispose()
         {
-
+            
         }
 
         public override string ToString()

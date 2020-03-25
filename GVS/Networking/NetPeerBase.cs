@@ -31,14 +31,15 @@ namespace GVS.Networking
             // Add some default handlers
             SetBaseHandler(NetIncomingMessageType.Data, (msg) =>
             {
-                byte id = msg.ReadByte();
-                var handler = handlers[id];
+                byte id = msg.PeekByte(); // Peek ID bye.
+                var handler = handlers[id]; // Find handler. May be null.
                 if(handler == null)
                 {
                     Warn($"Received data message of ID {id}, but not handler exists to process it!");
                 }
                 else
                 {
+                    msg.ReadByte(); // Consume the ID byte.
                     handler.Invoke(id, msg);
                 }
             });
@@ -89,12 +90,26 @@ namespace GVS.Networking
                 baseHandlers[type] = action;
         }
 
-        protected void ProcessMessages()
+        public void RecycleMessage(NetIncomingMessage msg)
         {
+            if (msg != null && peer != null)
+                peer.Recycle(msg);
+        }
+
+        public NetOutgoingMessage CreateMessage(byte id, int initialCapacity = 0)
+        {
+            NetOutgoingMessage msg = initialCapacity == 0 ? peer.CreateMessage() : peer.CreateMessage(initialCapacity);
+            msg.Write(id);
+            return msg;
+        }
+
+        protected bool ProcessMessages(out int messageCount)
+        {
+            messageCount = 0;
             if (peer == null)
-                return;
+                return false;
             if (peer.Status == NetPeerStatus.NotRunning)
-                return;
+                return false;
 
             NetIncomingMessage msg;
             while ((msg = peer.ReadMessage()) != null)
@@ -104,11 +119,14 @@ namespace GVS.Networking
                 // This is not the fastest way to do this...
                 if (baseHandlers.ContainsKey(type))
                 {
+                    messageCount++;
                     baseHandlers[type].Invoke(msg);
                 }
 
                 peer.Recycle(msg);
             }
+
+            return true;
         }
 
         protected void Trace(string msg)

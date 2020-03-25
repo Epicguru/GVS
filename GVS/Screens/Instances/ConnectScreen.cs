@@ -187,20 +187,16 @@ namespace GVS.Screens.Instances
             SetConnectionStatus($"Connecting: {status}");
         }
 
-        private void OnClientConnect(NetIncomingMessage msg)
+        private void OnClientConnect()
         {
             // Cool, connected. Move to game screen.
             var screen = Manager.GetScreen<PlayScreen>();
             screen.HostMode = false;
-
-            screen.ConnectMessage = msg;
-
             Manager.ChangeScreen<PlayScreen>();
         }
 
-        private void OnClientDisconnected(NetIncomingMessage msg)
+        private void OnClientDisconnected(string reason)
         {
-            string reason = msg.PeekString();
             ToggleConnectPanel(false);
             MessageBox.ShowMsgBox("Failed to connect", $"Connection was rejected:\n{reason}");
         }

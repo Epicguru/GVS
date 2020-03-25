@@ -126,20 +126,38 @@ namespace GVS
 
         #region Networking
 
-        public static void Write(this NetOutgoingMessage msg, Point3D point)
+        public static void Write(this NetBuffer msg, Point3D point)
         {
             msg.Write(point.X);
             msg.Write(point.Y);
             msg.Write(point.Z);
         }
 
-        public static Point3D ReadPoint3D(this NetIncomingMessage msg)
+        public static Point3D ReadPoint3D(this NetBuffer msg)
         {
             int x = msg.ReadInt32();
             int y = msg.ReadInt32();
             int z = msg.ReadInt32();
 
             return new Point3D(x, y, z);
+        }
+
+        public static void Write(this NetBuffer msg, Color c)
+        {
+            msg.Write(c.R);
+            msg.Write(c.G);
+            msg.Write(c.B);
+            msg.Write(c.A);
+        }
+
+        public static Color ReadColor(this NetBuffer msg)
+        {
+            byte r = msg.ReadByte();
+            byte g = msg.ReadByte();
+            byte b = msg.ReadByte();
+            byte a = msg.ReadByte();
+
+            return new Color(r, g, b, a);
         }
 
         #endregion
