@@ -221,13 +221,13 @@ namespace GVS.Screens.Instances
 
         public override void Update()
         {
-            if (Input.KeyDown(Keys.F))
-            {
-                Main.Camera.UpdateViewBounds = !Main.Camera.UpdateViewBounds;
-                Debug.Log($"Toggled update view bounds: {Main.Camera.UpdateViewBounds}");
-            }
+            //if (Input.IsKeyJustDown(Keys.F))
+            //{
+            //    Main.Camera.UpdateViewBounds = !Main.Camera.UpdateViewBounds;
+            //    Debug.Log($"Toggled update view bounds: {Main.Camera.UpdateViewBounds}");
+            //}
 
-            if (Input.KeyDown(Keys.R))
+            if (Input.IsKeyJustDown(Keys.R))
             {
                 Tile underMouse = Input.TileUnderMouse;
                 if (underMouse != null)
@@ -265,28 +265,28 @@ namespace GVS.Screens.Instances
         private static void UpdateCameraMove()
         {
             Vector2 input = Vector2.Zero;
-            if (Input.KeyPressed(Keys.A))
+            if (Input.IsKeyDown(Keys.A))
                 input.X -= 1;
-            if (Input.KeyPressed(Keys.D))
+            if (Input.IsKeyDown(Keys.D))
                 input.X += 1;
-            if (Input.KeyPressed(Keys.S))
+            if (Input.IsKeyDown(Keys.S))
                 input.Y += 1;
-            if (Input.KeyPressed(Keys.W))
+            if (Input.IsKeyDown(Keys.W))
                 input.Y -= 1;
             input.NormalizeSafe();
 
             const float CHANGE_SPEED = 0.9f;
             const float CHANGE_UP_SPEED = 1f / 0.9f;
             int zoomChange = 0;
-            if (Input.KeyPressed(Keys.E))
+            if (Input.IsKeyDown(Keys.E))
                 zoomChange += 1;
-            if (Input.KeyPressed(Keys.Q))
+            if (Input.IsKeyDown(Keys.Q))
                 zoomChange -= 1;
-            if (Input.KeyDown(Keys.NumPad0))
+            if (Input.IsKeyJustDown(Keys.NumPad0))
                 zoomChange = 420;
-            if (Input.KeyDown(Keys.NumPad1))
+            if (Input.IsKeyJustDown(Keys.NumPad1))
                 zoomChange = 69;
-            if (Input.KeyDown(Keys.NumPad2))
+            if (Input.IsKeyJustDown(Keys.NumPad2))
                 zoomChange = 69420;
 
             if (zoomChange != 0)

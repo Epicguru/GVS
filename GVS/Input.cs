@@ -53,17 +53,32 @@ namespace GVS
             tileUnderMouse = GetTileFromWorldPosition(MouseWorldPos);
         }
 
-        public static bool KeyPressed(Keys key)
+        /// <summary>
+        /// Returns true every frame while the key is held down.
+        /// </summary>
+        /// <param name="key">The key to check for.</param>
+        /// <returns>True if the key is being held down and input is active.</returns>
+        public static bool IsKeyDown(Keys key)
         {
             return Enabled && Pressed(currentKeyState[key]);
         }
 
-        public static bool KeyDown(Keys key)
+        /// <summary>
+        /// Returns true on the first frame that the key is pressed.
+        /// </summary>
+        /// <param name="key">The key to check for.</param>
+        /// <returns>True if the key has just been pressed and input is active.</returns>
+        public static bool IsKeyJustDown(Keys key)
         {
             return Enabled && Down(currentKeyState[key], lastKeyState[key]);
         }
 
-        public static bool KeyUp(Keys key)
+        /// <summary>
+        /// Returns true on the first frame that the key has just been released after being held down.
+        /// </summary>
+        /// <param name="key">The key to check for.</param>
+        /// <returns>True if the key has just been released and input is active.</returns>
+        public static bool IsKeyJustUp(Keys key)
         {
             return Enabled && Up(currentKeyState[key], lastKeyState[key]);
         }

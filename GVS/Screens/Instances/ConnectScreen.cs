@@ -203,9 +203,6 @@ namespace GVS.Screens.Instances
 
         public override void Update()
         {
-            if (Input.KeyDown(Keys.V))
-                Debug.Log($"{portInput.GetRelativeOffset()}");
-
             Main.Client.Update();
         }
     }

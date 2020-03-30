@@ -5,6 +5,7 @@ using System.Text;
 using GVS.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 
 namespace GVS
 {
@@ -12,6 +13,8 @@ namespace GVS
     {
         // TODO add an option (or just replace current system) to write the log entries straight to file
         // async to reduce memory consumption from having all these strings lying around.
+
+        public static bool DebugActive { get; set; } = false;
 
         public static bool LogEnabled { get; set; } = true;
         public static bool LogCallingMethod { get; set; } = true;
@@ -23,7 +26,7 @@ namespace GVS
         public static bool LogPrintTime { get; set; } = false;
         public static string LogFilePath { get; private set; }
 
-        public static Texture2D Pixel { get { return pixel; } }
+        public static Texture2D Pixel { get; private set; }
 
         internal static readonly List<string> DebugTexts = new List<string>();
         private static readonly StringBuilder stringBuilder = new StringBuilder();
@@ -36,7 +39,6 @@ namespace GVS
         private static readonly List<string> timerNames = new List<string>();
         private static readonly List<(DrawInstruction, object[] args)> toDraw = new List<(DrawInstruction, object[] args)>();
         private static readonly List<(DrawInstruction, object[] args)> toDrawUI = new List<(DrawInstruction, object[] args)>();
-        private static Texture2D pixel;
 
         public delegate void DrawInstruction(SpriteBatch spr, object[] args);
 
@@ -47,8 +49,8 @@ namespace GVS
 
             doneInit = true;
 
-            pixel = new Texture2D(Main.GlobalGraphicsDevice, 1, 1);
-            pixel.SetData(new Color[] {Color.White});
+            Pixel = new Texture2D(Main.GlobalGraphicsDevice, 1, 1);
+            Pixel.SetData(new Color[] {Color.White});
 
             string filePath = Path.Combine(GameIO.LogDirectory, "Log File.txt");
             LogFilePath = filePath;
@@ -239,12 +241,15 @@ namespace GVS
 
         internal static void Update()
         {
+            if (Input.IsKeyJustDown(Keys.F1))
+                DebugActive = !DebugActive;
+
             DebugTexts.Clear();
         }
 
         internal static void Draw(SpriteBatch spr)
         {
-            bool vis = true; // URGTODO make me hideable.
+            bool vis = DebugActive;
             if(!vis)
             {
                 toDraw.Clear();
@@ -262,7 +267,7 @@ namespace GVS
 
         internal static void DrawUI(SpriteBatch spr)
         {
-            bool vis = true; // URGTODO make me hideable.
+            bool vis = DebugActive;
             if (!vis)
             {
                 toDrawUI.Clear();
