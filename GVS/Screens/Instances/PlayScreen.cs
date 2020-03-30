@@ -14,7 +14,7 @@ using System;
 
 namespace GVS.Screens.Instances
 {
-    public class PlayScreen : GameScreen
+    public partial class PlayScreen : GameScreen
     {
         public bool HostMode { get; set; } = false;
 
@@ -27,11 +27,15 @@ namespace GVS.Screens.Instances
 
         public override void Load()
         {
+            LoadUIData();
+            CreateUI();
             LoadGenericMode();
 
             if (HostMode)
             {
                 LoadHostMode();
+                Main.Server.OnHumanPlayerConnect += AddPlayerItem;
+                Main.Server.OnHumanPlayerDisconnect += RemovePlayerItem;
             }
             else
             {
@@ -203,6 +207,16 @@ namespace GVS.Screens.Instances
             var map = Main.Map;
             Main.Map = null;
             map.Dispose();
+        }
+
+        public override void UponShow()
+        {
+            ShowUI();
+        }
+
+        public override void UponHide()
+        {
+            HideUI();
         }
 
         public override void Update()

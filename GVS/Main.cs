@@ -190,8 +190,8 @@ namespace GVS
 
         protected override void EndRun()
         {
-            ScreenManager.Shutdown();
             Loop.StopAndWait();
+            ScreenManager.Shutdown();
             Debug.Shutdown();
             thisProcess.Dispose();
             thisProcess = null;

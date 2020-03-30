@@ -1,6 +1,7 @@
 ﻿using GVS.Networking.Players;
 using GVS.World;
 using Lidgren.Network;
+using System;
 using System.Collections.Generic;
 
 namespace GVS.Networking
@@ -50,6 +51,9 @@ namespace GVS.Networking
         /// Default value is 8.
         /// </summary>
         public int MaxChunksToUploadPerFrame { get; set; } = 4;
+
+        public event Action<Player> OnHumanPlayerConnect;
+        public event Action<Player> OnHumanPlayerDisconnect;
 
         private List<ActiveWorldUpload> worldUploads;
         private List<Player> connectedPlayers;
@@ -101,6 +105,16 @@ namespace GVS.Networking
                     case NetConnectionStatus.Connected:
                         // At this point, the HumanPlayer object has already been set up because it's connection was approved.
                         // Nothing to do here for now.
+
+                        if (player == null)
+                        {
+                            Error($"Remote client has connected, but a player object is not associated with them... Did setup fail?");
+                            break;
+                        }
+
+                        Log($"Client has connected: {player.Name}");
+                        OnHumanPlayerConnect?.Invoke(player);
+
                         break;
 
                     case NetConnectionStatus.Disconnected:
@@ -113,7 +127,9 @@ namespace GVS.Networking
                         }
 
                         string text = msg.PeekString();
-                        Log($"Client has disconnected: {text}");
+
+                        Log($"Client '{player.Name}' has disconnected: {text}");
+                        OnHumanPlayerDisconnect?.Invoke(player);
 
                         RemovePlayer(player);
                         break;
@@ -195,7 +211,7 @@ namespace GVS.Networking
                 remoteIDToPlayer.Add(human.RemoteUniqueIdentifier, human);
             }
 
-            Log($"Player has joined: {p}");
+            // Log($"Player has joined: {p}");
         }
 
         private void RemovePlayer(Player p)
@@ -210,7 +226,7 @@ namespace GVS.Networking
                 remoteIDToPlayer.Remove(human.RemoteUniqueIdentifier);
             }
 
-            Log($"Player has left: {p}");
+            // Log($"Player has left: {p}");
         }
 
         public Player GetPlayer(uint id)
