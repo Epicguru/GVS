@@ -27,7 +27,7 @@
     <DefineConstants>DEBUG;TRACE;WINDOWS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -37,7 +37,7 @@
     <DefineConstants>TRACE;WINDOWS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
@@ -53,6 +53,8 @@
     <Compile Include="Debug.cs" />
     <Compile Include="Entities\Entity.cs" />
     <Compile Include="Entities\Instances\DevTroop.cs" />
+    <Compile Include="Networking\INetSynched.cs" />
+    <Compile Include="Networking\NetChannel.cs" />
     <Compile Include="Networking\Players\BotPlayer.cs" />
     <Compile Include="Networking\Players\HumanPlayer.cs" />
     <Compile Include="Networking\Players\Player.cs" />

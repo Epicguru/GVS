@@ -10,9 +10,6 @@ namespace GVS.Screens.Instances
     {
         private Panel playerList;
 
-        private Panel roundAndTurnPanel;
-        private RichParagraph roundAndTurnParagraph;
-
         private Texture2D playerIcon;
         
         private void LoadUIData()
@@ -31,7 +28,6 @@ namespace GVS.Screens.Instances
             LoadingScreenText = "Generate UI...";
 
             CreatePlayerList();
-            CreateRoundAndTurnPanel();
         }
 
         private void CreatePlayerList()
@@ -78,31 +74,14 @@ namespace GVS.Screens.Instances
             return null;
         }
 
-        private void CreateRoundAndTurnPanel()
-        {
-            roundAndTurnPanel = new Panel();
-            roundAndTurnPanel.Anchor = Anchor.TopCenter;
-            roundAndTurnPanel.Size = new Vector2(240, 60);
-            roundAndTurnPanel.Skin = PanelSkin.Default;
-
-            roundAndTurnParagraph = new RichParagraph("{{BOLD}}Round 0{{REGULAR}}\nBlyatman's turn");
-            roundAndTurnParagraph.Anchor = Anchor.AutoCenter;
-            roundAndTurnParagraph.AlignToCenter = true;
-            roundAndTurnPanel.AdjustHeightAutomatically = true;
-            roundAndTurnPanel.AddChild(roundAndTurnParagraph);
-            roundAndTurnPanel.SetHeightBasedOnChildren();
-        }
-
         private void ShowUI()
         {
             UserInterface.Active.AddEntity(playerList);
-            UserInterface.Active.AddEntity(roundAndTurnPanel);
         }
 
         private void HideUI()
         {
             UserInterface.Active.RemoveEntity(playerList);
-            UserInterface.Active.RemoveEntity(roundAndTurnPanel);
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using GeonBit.UI;
-using GVS.Networking;
 using GVS.Screens;
 using GVS.Screens.Instances;
 using GVS.Sprites;
@@ -36,23 +35,6 @@ namespace GVS
         public static Sprite GrassTile, MountainTile, TreeTile, StoneTile, StoneTopTile;
         public static Sprite WaterTile, SandTile, HouseTile;
         public static Sprite TileShadowTopLeft, TileShadowTopRight, TileShadowBottomLeft, TileShadowBottomRight;
-
-        public static GameClient Client { get; internal set; }
-        public static GameServer Server { get; internal set; }
-        public static bool IsClient
-        {
-            get
-            {
-                return Client != null && Client.ConnectionStatus == Lidgren.Network.NetConnectionStatus.Connected;
-            }
-        }
-        public static bool IsServer
-        {
-            get
-            {
-                return Server != null && Server.Status == Lidgren.Network.NetPeerStatus.Running;
-            }
-        }
 
         public static AnimatedSprite LoadingIconSprite { get; private set; }
 

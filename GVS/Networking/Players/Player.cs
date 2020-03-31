@@ -1,5 +1,4 @@
-﻿
-using Lidgren.Network;
+﻿using Lidgren.Network;
 
 namespace GVS.Networking.Players
 {
@@ -8,10 +7,20 @@ namespace GVS.Networking.Players
     /// </summary>
     public abstract class Player
     {
+        public static Player Create(NetBuffer msg)
+        {
+            bool isBot = msg.ReadBoolean();
+
+            Player p = isBot ? (Player)new BotPlayer() : (Player)new HumanPlayer();
+            p.ReadFromMessage(msg);
+
+            return p;
+        }
+
         /// <summary>
         /// The name of this player or bot. May not be unique (there could be multiple players with the same name).
         /// </summary>
-        public string Name { get; protected set; }
+        public string Name { get; internal set; }
         /// <summary>
         /// Is this an instance of <see cref="HumanPlayer"/>?
         /// </summary>
@@ -40,9 +49,28 @@ namespace GVS.Networking.Players
         /// </summary>
         public uint ID { get; internal set; }
 
-        protected Player(string name)
+        protected internal Player()
         {
-            this.Name = name;
+
+        }
+
+        /// <summary>
+        /// Writes basic info the a message.
+        /// </summary>
+        internal virtual void WriteToMessage(NetBuffer msg)
+        {
+            msg.Write(ID);
+            msg.Write(Name);
+        }
+
+        /// <summary>
+        /// Reads basic info from a message.
+        /// </summary>
+        /// <param name="msg"></param>
+        internal virtual void ReadFromMessage(NetBuffer msg)
+        {
+            ID = msg.ReadUInt32();
+            Name = msg.ReadString();
         }
     }
 }

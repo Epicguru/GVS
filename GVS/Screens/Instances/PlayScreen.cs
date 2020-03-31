@@ -27,6 +27,9 @@ namespace GVS.Screens.Instances
 
         public override void Load()
         {
+            Net.OnHumanPlayerConnect += AddPlayerItem;
+            Net.OnHumanPlayerDisconnect += RemovePlayerItem;
+
             LoadUIData();
             CreateUI();
             LoadGenericMode();
@@ -34,15 +37,18 @@ namespace GVS.Screens.Instances
             if (HostMode)
             {
                 LoadHostMode();
-                Main.Server.OnHumanPlayerConnect += AddPlayerItem;
-                Main.Server.OnHumanPlayerDisconnect += RemovePlayerItem;
             }
             else
             {
                 LoadRemoteMode();
             }
+
         }
 
+        /// <summary>
+        /// Loads tile defs, entity defs, tileComp defs etc.
+        /// Things that need to be loaded just to play the game regardless of client/server mode.
+        /// </summary>
         private void LoadGenericMode()
         {
             // Called to load regardless of whether it's host mode or remote mode.
@@ -77,10 +83,10 @@ namespace GVS.Screens.Instances
 
             // Load by creating an internal server and connecting local client.
             LoadingScreenText = "Creating server...";
-            Main.Server = new GameServer(7777, 8);
+            Net.Server = new GameServer(7777, 8);
             try
             {
-                Main.Server.Start();
+                Net.Server.Start();
             }
             catch(Exception e)
             {
@@ -91,8 +97,8 @@ namespace GVS.Screens.Instances
             }
 
             LoadingScreenText = "Connecting local client...";
-            Main.Client = new GameClient();
-            bool connected = Main.Client.Connect("localhost", 7777, out string error);
+            Net.Client = new GameClient();
+            bool connected = Net.Client.Connect("localhost", 7777, out string error);
             if (!connected)
             {
                 Debug.Error("CRITICAL SHIT YO! Failed to connect to local host! How does that even happen?!?!");
@@ -109,13 +115,13 @@ namespace GVS.Screens.Instances
             expectedChunks = 0;
 
             // Register handler.
-            Main.Client.SetHandler(NetMessageType.Data_BasicServerInfo, this.HandleBasicServerInfo);
-            Main.Client.SetHandler(NetMessageType.Data_WorldChunk, this.HandleWorldData);
+            Net.Client.SetHandler(NetMessageType.Data_BasicServerInfo, this.HandleBasicServerInfo);
+            Net.Client.SetHandler(NetMessageType.Data_WorldChunk, this.HandleWorldData);
 
             // Request basic world info.
             LoadingScreenText = "Waiting for server info...";
-            NetOutgoingMessage basicReq = Main.Client.CreateMessage(NetMessageType.Req_BasicServerInfo);
-            Main.Client.SendMessage(basicReq, NetDeliveryMethod.ReliableUnordered);
+            NetOutgoingMessage basicReq = Net.Client.CreateMessage(NetMessageType.Req_BasicServerInfo);
+            Net.Client.SendMessage(basicReq, NetDeliveryMethod.ReliableUnordered);
             Debug.Trace("Requested basic server info, wait for response...");
 
             const int SLEEP = 10;
@@ -125,7 +131,7 @@ namespace GVS.Screens.Instances
             for (int i = 0; i < MAX_ITERATIONS; i++)
             {
                 // Make sure we receive messages.
-                Main.Client.Update();
+                Net.Client.Update();
 
                 // If this is not zero then it means we have already got world basic info.
                 if(expectedChunks != 0)
@@ -169,8 +175,8 @@ namespace GVS.Screens.Instances
 
             // Now request all of the world data!
             LoadingScreenText = "Requesting map data...";
-            NetOutgoingMessage toSend = Main.Client.CreateMessage(NetMessageType.Req_WorldChunks);
-            Main.Client.SendMessage(toSend, NetDeliveryMethod.ReliableUnordered);
+            NetOutgoingMessage toSend = Net.Client.CreateMessage(NetMessageType.Req_WorldChunks);
+            Net.Client.SendMessage(toSend, NetDeliveryMethod.ReliableUnordered);
         }
 
         private void HandleWorldData(byte id, NetIncomingMessage msg)
@@ -198,11 +204,11 @@ namespace GVS.Screens.Instances
 
         public override void Unload()
         {
-            Main.Server?.Dispose();
-            Main.Server = null;
+            Net.Server?.Dispose();
+            Net.Server = null;
 
-            Main.Client?.Dispose();
-            Main.Client = null;
+            Net.Client?.Dispose();
+            Net.Client = null;
 
             var map = Main.Map;
             Main.Map = null;
@@ -244,8 +250,8 @@ namespace GVS.Screens.Instances
 
             // Update client and server if they are not null.
             // TODO quit game if client disconnects.
-            Main.Server?.Update();
-            Main.Client?.Update();
+            Net.Server?.Update();
+            Net.Client?.Update();
 
             Main.Map.Update();
             Entity.UpdateAll();

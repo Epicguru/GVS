@@ -15,7 +15,6 @@ namespace GVS.Networking
                 return server.Status;
             }
         }
-        public bool IsRunning { get; private set; }
         /// <summary>
         /// The password that clients need to give before connecting.
         /// If null, no password is required. This can be changed once the server is
@@ -51,9 +50,23 @@ namespace GVS.Networking
         /// Default value is 8.
         /// </summary>
         public int MaxChunksToUploadPerFrame { get; set; } = 4;
-
-        public event Action<Player> OnHumanPlayerConnect;
-        public event Action<Player> OnHumanPlayerDisconnect;
+        /// <summary>
+        /// The maximum number of players (humans and bots) that are allowed in the current match.
+        /// </summary>
+        public int MaxPlayers { get; }
+        /// <summary>
+        /// The connection to the host client, if they exist. This may be null if there is no host.
+        /// This is useful when used with <see cref="SendMessageToAll(NetOutgoingMessage, NetDeliveryMethod, NetConnection, int)"/>
+        /// because it allows for messages to be sent to all except for the host, and if this value is null then the method
+        /// will send to all.
+        /// </summary>
+        public NetConnection HostConnection { get; private set; }
+        /// <summary>
+        /// The host key that the connecting client uses to tell the server that it is the host.
+        /// It is randomly generated, so if a 'hacker' tried to impersonate the host then there is
+        /// a 1 in 18446744073709551614 chance that they would guess correctly.
+        /// </summary>
+        internal ulong HostKey = 0;
 
         private List<ActiveWorldUpload> worldUploads;
         private List<Player> connectedPlayers;
@@ -68,6 +81,8 @@ namespace GVS.Networking
             base.peer = server;
             base.tag = "Server";
 
+            this.MaxPlayers = maxPlayers;
+
             this.connectedPlayers = new List<Player>();
             this.idToPlayer = new Dictionary<uint, Player>();
             this.remoteIDToPlayer = new Dictionary<long, HumanPlayer>();
@@ -75,9 +90,14 @@ namespace GVS.Networking
 
             base.SetHandler(NetMessageType.Req_BasicServerInfo, (id, msg) =>
             {
+                // Note: this message never arrives from the client if they are a host, as they already know everything about the world.
+
                 // Send a little info about the server and the map...
                 NetOutgoingMessage first = CreateBaseMapInfo();
-                server.SendMessage(first, msg.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+                SendMessage(msg.SenderConnection, first, NetDeliveryMethod.ReliableOrdered);
+
+                // Send player list.
+                SendAllPlayerData(msg.SenderConnection);
 
                 // The client should send back a response asking for full map info. (see below for response)
             });
@@ -112,8 +132,15 @@ namespace GVS.Networking
                             break;
                         }
 
-                        Log($"Client has connected: {player.Name}");
-                        OnHumanPlayerConnect?.Invoke(player);
+                        Log($"Client has connected: {player.Name} {(player.IsHost ? "(host)" : "")}");
+                        Net.BroadcastConnect(player);
+
+                        // Notify all clients that a new player has joined (apart from the host who already knows)
+                        var newConnectMsg = CreateMessage(NetMessageType.Data_PlayerData, 32);
+                        newConnectMsg.Write((byte)1);
+                        newConnectMsg.Write(false); // IsBot
+                        player.WriteToMessage(newConnectMsg); // Other data such as IsHost, name etc.
+                        SendMessageToAll(newConnectMsg, NetDeliveryMethod.ReliableSequenced, HostConnection);
 
                         break;
 
@@ -129,7 +156,13 @@ namespace GVS.Networking
                         string text = msg.PeekString();
 
                         Log($"Client '{player.Name}' has disconnected: {text}");
-                        OnHumanPlayerDisconnect?.Invoke(player);
+                        Net.BroadcastDisconnect(player);
+
+                        // Notify all clients that a player has left (apart from the host who already knows)
+                        var disconnectMsg = CreateMessage(NetMessageType.Data_PlayerData, 32);
+                        disconnectMsg.Write((byte)2);
+                        disconnectMsg.Write(player.ID);
+                        SendMessageToAll(disconnectMsg, NetDeliveryMethod.ReliableSequenced, HostConnection);
 
                         RemovePlayer(player);
                         break;
@@ -140,6 +173,25 @@ namespace GVS.Networking
             base.SetBaseHandler(NetIncomingMessageType.ConnectionApproval, (msg) =>
             {
                 // TODO add check for number of players currently in the game.
+
+                ulong hostKey = msg.ReadUInt64();
+                bool isHost = false;
+                if(hostKey != 0)
+                {
+                    // This means that the client is claiming to be the local host.
+                    // If so, the host key should be the same as the one on this object,
+                    // which is generated when the server Start() method is called.
+                    // Otherwise, there is either a serious bug or a hacking attempt.
+                    if(hostKey != this.HostKey)
+                    {
+                        Warn($"Connecting client from {msg.SenderConnection} has claimed they are the host with host key {hostKey}, but this in the incorrect host key. Bug or impersonator?");
+                    }
+                    else
+                    {
+                        // Correct host key, they are the real host (or 1 in 18.4 quintillion chance).
+                        isHost = true;
+                    }
+                }
 
                 // Password (or empty string).
                 string password = msg.ReadString();
@@ -158,11 +210,19 @@ namespace GVS.Networking
                 }
 
                 // Create player object for them.
-                HumanPlayer p = new HumanPlayer(name);
+                HumanPlayer p = new HumanPlayer();
+                p.IsHost = isHost;
+                p.Name = name;
                 p.ConnectionToClient = msg.SenderConnection;
 
                 // Add player to the game. (gives them an Id and stuff)
                 AddPlayer(p);
+
+                if (isHost)
+                {
+                    // Flag them as the host connection.
+                    HostConnection = msg.SenderConnection;
+                }
 
                 // Accept the connection, everything looks good!
                 msg.SenderConnection.Approve();
@@ -183,6 +243,30 @@ namespace GVS.Networking
             msg.Write(Main.Map.GetNumberOfNetChunks());
 
             return msg;
+        }
+
+        private void SendAllPlayerData(NetConnection toSendTo)
+        {
+            if (toSendTo == null)
+                return;
+
+            int playerCount = connectedPlayers.Count;
+            NetOutgoingMessage msg = CreateMessage(NetMessageType.Data_PlayerData, playerCount * 22);
+
+            /*
+             * 0 for all players.
+             * 1 for player connect.
+             * 2 for player disconnect.
+             */
+            msg.Write((byte)0);
+            msg.Write(playerCount);
+            foreach (var player in connectedPlayers)
+            {
+                msg.Write(player.IsBot);
+                player.WriteToMessage(msg);
+            }
+
+            SendMessage(toSendTo, msg, NetDeliveryMethod.ReliableUnordered);
         }
 
         private static NetPeerConfiguration MakeConfig(int port, int maxPlayers)
@@ -262,9 +346,9 @@ namespace GVS.Networking
 
         public void Start()
         {
-            if(IsRunning)
+            if(Status != NetPeerStatus.NotRunning)
             {
-                Warn("Server is already running.");
+                Error($"Server cannot be started, expected NotRunning state, got {Status}.");
                 return;
             }
 
@@ -273,10 +357,15 @@ namespace GVS.Networking
             connectedPlayers.Clear();
             idToPlayer.Clear();
             remoteIDToPlayer.Clear();
+
+            // Generate random host key.
+            Random r = new Random();
+            byte[] bytes = new byte[8];
+            r.NextBytes(bytes);
+            HostKey = BitConverter.ToUInt64(bytes, 0);
             
             Trace($"Starting server on port {Config.Port}...");
             server.Start();
-            IsRunning = true;
         }
 
         public void Update()
@@ -310,22 +399,43 @@ namespace GVS.Networking
             }
         }
 
-        public void SendMessage(NetConnection conn, NetOutgoingMessage msg, NetDeliveryMethod delivery)
+        /// <summary>
+        /// Sends a network message to a particular client connection using a particular delivery method.
+        /// None of the parameters may be null, and the connection must be valid (connected to this server).
+        /// </summary>
+        /// <param name="conn">The client connection to send to, may not be null and must be connected to this server.</param>
+        /// <param name="msg">The message to send. Should contain at least 1 byte corresponding to it's type. See <see cref="NetPeerBase.CreateMessage(byte, int)"/> and <see cref="NetMessageType"/> for more info.</param>
+        /// <param name="delivery">The delivery method to use. Most are self explanatory, see Lidgren documentation for more info.</param>
+        /// <param name="channel">The network channel to send the data on. See Lidgren documentation for more info. If unsure, leave as default value.</param>
+        public void SendMessage(NetConnection conn, NetOutgoingMessage msg, NetDeliveryMethod delivery, int channel = NetChannel.Default)
         {
-            server.SendMessage(msg, conn, delivery);
+            server.SendMessage(msg, conn, delivery, channel);
+        }
+
+        /// <summary>
+        /// Sends a network message to all connected clients, with an optional excluded client.
+        /// The message may not be null but <paramref name="except"/> may be null to send to all.
+        /// See <see cref="HostConnection"/>.
+        /// </summary>
+        /// <param name="msg">The message to send. Should contain at least 1 byte corresponding to it's type. See <see cref="NetPeerBase.CreateMessage(byte, int)"/> and <see cref="NetMessageType"/> for more info.</param>
+        /// <param name="delivery">The delivery method to use. Most are self explanatory, see Lidgren documentation for more info.</param>
+        /// <param name="except">The (optional) client to exclude. All clients apart from the excluded client will receive the message. Often used with <see cref="HostConnection"/>.</param>
+        /// <param name="channel">The network channel to send the data on. See Lidgren documentation for more info. If unsure, leave as default value.</param>
+        public void SendMessageToAll(NetOutgoingMessage msg, NetDeliveryMethod delivery, NetConnection except = null, int channel = NetChannel.Default)
+        {
+            server.SendToAll(msg, except, delivery, 0);
         }
 
         public void Shutdown(string message)
         {
-            if (!IsRunning)
+            if (Status != NetPeerStatus.Running)
             {
-                Warn("Server is not running.");
+                Error($"Server cannot be shutdown, expected state Running, got {Status}.");
                 return;
             }
 
             Trace($"Shutting down server: {message}");
             server.Shutdown(message);
-            IsRunning = false;
 
             connectedPlayers.Clear();
             idToPlayer.Clear();
@@ -334,7 +444,7 @@ namespace GVS.Networking
 
         public override void Dispose()
         {
-            if (IsRunning)
+            if (!(Status == NetPeerStatus.ShutdownRequested || Status == NetPeerStatus.NotRunning))
                 Shutdown("Server has closed (dsp)");
             server = null;
 

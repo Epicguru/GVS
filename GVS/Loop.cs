@@ -1,5 +1,6 @@
 using GeonBit.UI;
 using GVS.Entities;
+using GVS.Networking;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
@@ -305,7 +306,7 @@ namespace GVS
             Debug.Text($"Draw Calls: {Loop.Statistics.DrawMetrics.DrawCount}");
             Debug.Text($"Sprites Drawn: {Loop.Statistics.DrawMetrics.SpriteCount}");
             Debug.Text($"Total Entities: {Entity.SpawnedCount}.");
-            Debug.Text($"Net - Client: {Main.Client?.ConnectionStatus.ToString() ?? "null"}, Server: {Main.Server?.Status.ToString() ?? "null"}");
+            Debug.Text($"Net - Client: {Net.Client?.ConnectionStatus.ToString() ?? "null"}, Server: {Net.Server?.Status.ToString() ?? "null"}");
             Debug.Text($"Under mouse: {(Input.TileUnderMouse == null ? "null" : Input.TileUnderMouse.Position.ToString())}");
 
             // Update currently active screen.

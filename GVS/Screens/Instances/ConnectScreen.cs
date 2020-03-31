@@ -4,7 +4,6 @@ using GeonBit.UI.Utils;
 using GVS.Networking;
 using Lidgren.Network;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 
 namespace GVS.Screens.Instances
 {
@@ -118,7 +117,7 @@ namespace GVS.Screens.Instances
             int portNum = int.Parse(port); // Should always work because there is a validator on the input.
 
             Debug.Log($"Starting connect: {ip}, {portNum}");
-            bool worked = Main.Client.Connect(ip, portNum, out string error, password);
+            bool worked = Net.Client.Connect(ip, portNum, out string error, password);
             if (!worked)
             {
                 MessageBox.ShowMsgBox("Failed to connect", $"Connecting failed:\n{error}");
@@ -130,7 +129,7 @@ namespace GVS.Screens.Instances
 
         public void OnCancelConnectClicked(Entity e)
         {
-            Main.Client.Disconnect();
+            Net.Client.Disconnect();
             ToggleConnectPanel(false);
         }
 
@@ -153,11 +152,11 @@ namespace GVS.Screens.Instances
 
         public override void UponShow()
         {
-            Debug.Assert(Main.Client == null, "Expected client to be null!");
-            Main.Client = new GameClient();
-            Main.Client.OnStatusChange += ClientConnStatusChange;
-            Main.Client.OnConnected += OnClientConnect;
-            Main.Client.OnDisconnected += OnClientDisconnected;
+            Debug.Assert(Net.Client == null, "Expected client to be null!");
+            Net.Client = new GameClient();
+            Net.Client.OnStatusChange += ClientConnStatusChange;
+            Net.Client.OnConnected += OnClientConnect;
+            Net.Client.OnDisconnected += OnClientDisconnected;
 
             UserInterface.Active.AddEntity(mainPanel);
             UserInterface.Active.AddEntity(connectingPanel);
@@ -169,16 +168,16 @@ namespace GVS.Screens.Instances
             UserInterface.Active.RemoveEntity(mainPanel);
             UserInterface.Active.RemoveEntity(connectingPanel);
 
-            if(Main.Client.ConnectionStatus == NetConnectionStatus.Disconnected)
+            if(Net.Client.ConnectionStatus == NetConnectionStatus.Disconnected)
             {
-                Main.Client.Dispose();
-                Main.Client = null;
+                Net.Client.Dispose();
+                Net.Client = null;
             }
             else
             {
-                Main.Client.OnStatusChange -= ClientConnStatusChange;
-                Main.Client.OnConnected -= OnClientConnect;
-                Main.Client.OnDisconnected -= OnClientDisconnected;
+                Net.Client.OnStatusChange -= ClientConnStatusChange;
+                Net.Client.OnConnected -= OnClientConnect;
+                Net.Client.OnDisconnected -= OnClientDisconnected;
             }
         }
 
@@ -203,7 +202,7 @@ namespace GVS.Screens.Instances
 
         public override void Update()
         {
-            Main.Client.Update();
+            Net.Client.Update();
         }
     }
 }
